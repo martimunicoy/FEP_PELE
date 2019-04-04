@@ -73,9 +73,9 @@ class LambdasSimulation(Command):
                                                lambda_value,
                                                path +
                                                control_file_name)
-            check_output.run(["mpirun", "-n",
-                              str(self.settings.number_of_processors),
-                              "--oversubscribe", self.settings.mpi_pele,
-                              path + control_file_name])
+            check_output(["mpirun", "-n",
+                          str(self.settings.number_of_processors),
+                          "--oversubscribe", self.settings.mpi_pele,
+                          path + control_file_name])
 
             print("   Done")
