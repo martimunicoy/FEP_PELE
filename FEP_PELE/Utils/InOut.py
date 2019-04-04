@@ -2,6 +2,7 @@
 # Python imports
 import os
 import glob
+import shutil
 
 
 # FEP_PELE imports
@@ -64,6 +65,13 @@ def clear_directory(path):
                 os.remove(f)
             except OSError:
                 pass
+
+
+def full_clear_directory(path):
+    if (not os.path.exists(path)):
+        os.makedirs(path)
+    else:
+        shutil.rmtree(path)
 
 
 def clear_file(path):

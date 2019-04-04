@@ -2,7 +2,7 @@
 
 
 # Python imports
-from subprocess import check_output
+from subprocess import check_output, DEVNULL
 
 
 # FEP_PELE imports
@@ -11,6 +11,7 @@ from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
     AlchemicalTemplateCreator
 from FEP_PELE.Utils.InOut import clear_directory
+from FEP_PELE.Utils.InOut import full_clear_directory
 from FEP_PELE.Utils.InOut import write_lambda_value_to_control_file
 from FEP_PELE.Utils.InOut import getFileFromPath
 from FEP_PELE.PELETools import PELEConstants as pele_co
@@ -35,7 +36,7 @@ class LambdasSimulation(Command):
             self.settings.final_template,
             self.settings.atom_links)
 
-        clear_directory(self.settings.general_path + co.SIMULATION_FOLDER)
+        full_clear_directory(self.settings.general_path + co.SIMULATION_FOLDER)
 
         for lambda_value in self.settings.lambdas:
             print("##############")
@@ -58,7 +59,7 @@ class LambdasSimulation(Command):
 
             print("  - Initial minimization")
             check_output([self.settings.serial_pele,
-                          self.settings.min_control_file])
+                          self.settings.min_control_file], stderr=DEVNULL)
 
             print("  - Simulation")
 
@@ -73,9 +74,10 @@ class LambdasSimulation(Command):
                                                lambda_value,
                                                path +
                                                control_file_name)
+
             check_output(["mpirun", "-n",
                           str(self.settings.number_of_processors),
                           "--oversubscribe", self.settings.mpi_pele,
-                          path + control_file_name])
+                          path + control_file_name], stderr=DEVNULL)
 
             print("   Done")
