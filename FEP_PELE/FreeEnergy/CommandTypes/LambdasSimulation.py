@@ -2,6 +2,7 @@
 
 
 # Python imports
+import sys
 from subprocess import check_output, DEVNULL
 
 
@@ -15,6 +16,7 @@ from FEP_PELE.Utils.InOut import full_clear_directory
 from FEP_PELE.Utils.InOut import write_lambda_value_to_control_file
 from FEP_PELE.Utils.InOut import getFileFromPath
 from FEP_PELE.PELETools import PELEConstants as pele_co
+from FEP_PELE.PELETools.PELERunner import PELERunner
 
 
 # Script information
@@ -54,30 +56,48 @@ class LambdasSimulation(Command):
 
             print(" - Running PELE")
 
-            path = self.settings.general_path + co.MINIMIZATION_FOLDER
-            clear_directory(path)
-
             print("  - Initial minimization")
-            check_output([self.settings.serial_pele,
-                          self.settings.min_control_file], stderr=DEVNULL)
+
+            self._minimize()
 
             print("  - Simulation")
 
-            path = self.settings.general_path + co.SIMULATION_FOLDER + \
-                str(lambda_value) + "/"
-
-            clear_directory(path)
-
-            control_file_name = getFileFromPath(self.settings.sim_control_file)
-
-            write_lambda_value_to_control_file(self.settings.sim_control_file,
-                                               lambda_value,
-                                               path +
-                                               control_file_name)
-
-            check_output(["mpirun", "-n",
-                          str(self.settings.number_of_processors),
-                          "--oversubscribe", self.settings.mpi_pele,
-                          path + control_file_name], stderr=DEVNULL)
+            self._simulate(lambda_value)
 
             print("   Done")
+
+    def _minimize(self):
+        path = self.settings.general_path + co.MINIMIZATION_FOLDER
+
+        clear_directory(path)
+
+        runner = PELERunner(self.settings.serial_pele,
+                            number_of_processors=1)
+
+        try:
+            runner.run(self.settings.min_control_file)
+        except SystemExit as exception:
+            print("LambdasSimulation error: \n" + str(exception))
+            sys.exit(1)
+
+    def _simulate(self, lambda_value):
+        path = self.settings.general_path + co.SIMULATION_FOLDER + \
+            str(lambda_value) + "/"
+
+        clear_directory(path)
+
+        runner = PELERunner(
+            self.settings.mpi_pele,
+            number_of_processors=self.settings.number_of_processors)
+
+        control_file_name = getFileFromPath(self.settings.sim_control_file)
+
+        write_lambda_value_to_control_file(self.settings.sim_control_file,
+                                           lambda_value,
+                                           path + control_file_name)
+
+        try:
+            runner.run(path + control_file_name)
+        except SystemExit as exception:
+            print("LambdasSimulation error: \n" + str(exception))
+            sys.exit(1)

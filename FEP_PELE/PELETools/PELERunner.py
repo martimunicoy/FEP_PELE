@@ -63,7 +63,7 @@ class PELERunner(object):
     def _mpi_run(self, control_file_path):
         try:
             output = check_output(["mpirun", "-n",
-                                   str(self.number_of_processors),
+                                   str(self.__number_of_processors),
                                    "--oversubscribe", self.__executable_path,
                                    control_file_path],
                                   stderr=STDOUT)
@@ -72,7 +72,7 @@ class PELERunner(object):
             print(exception.output.decode('utf-8').strip())
             raise SystemExit(
                 "Error while running PELE: \'" + "mpirun -n " +
-                str(self.number_of_processors) + "--oversubscribe" +
+                str(self.__number_of_processors) + "--oversubscribe" +
                 self.__executable_path + control_file_path + '\'')
 
         return output.decode('utf-8').strip()
