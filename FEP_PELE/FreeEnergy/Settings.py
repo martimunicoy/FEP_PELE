@@ -4,6 +4,7 @@ from . import Constants as co
 from FEP_PELE.Utils.InOut import checkPath, checkFile
 from FEP_PELE.Utils.InOut import getFileFromPath
 from FEP_PELE.Tools.StringTools import asPath
+from FEP_PELE.Tools.StringTools import asBool
 
 
 class Settings(object):
@@ -22,6 +23,7 @@ class Settings(object):
         self.__sim_control_file = co.DEF_SIM_CONTROL_FILE
         self.__pp_control_file = co.DEF_PP_CONTROL_FILE
         self.__sp_control_file = co.DEF_SP_CONTROL_FILE
+        self.__safety_check = co.DEF_SAFETY_CHECK
 
         # Other
         self.__default_lambdas = True
@@ -77,6 +79,10 @@ class Settings(object):
     @property
     def sp_control_file(self):
         return self.__sp_control_file
+
+    @property
+    def safety_check(self):
+        return self.__safety_check
 
     @property
     def final_template_name(self):
@@ -155,6 +161,11 @@ class Settings(object):
             value = self._checkFile(key, value)
             self.__sp_control_file = str(value)
 
+        elif (key == co.CONTROL_FILE_DICT["SAFETY_CHECK"]):
+            value = self._getSingleValue(key, value)
+            value = self._checkBool(key, value)
+            self.__safety_check = value
+
     def _getSingleValue(self, key, value):
         if (len(value) != 1):
             raise NameError('Expected a single value in line with key' +
@@ -171,6 +182,16 @@ class Settings(object):
                 list_of_strings.append(item)
 
         return list_of_strings
+
+    def _checkBool(self, key, value):
+        try:
+            value = asBool(value)
+        except ValueError as exception:
+            print("Error while setting \'{}\',\'{}\'".format(key, value) +
+                  ": " + str(exception))
+            exit(1)
+
+        return value
 
     def _checkPath(self, key, value):
         try:

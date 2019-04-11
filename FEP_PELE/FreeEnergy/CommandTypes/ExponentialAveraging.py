@@ -36,13 +36,17 @@ class ExponentialAveraging(Command):
 
         lambda_folders = self._getLambdaFolders(path)
 
-        energies = []
+        results = []
 
         for lambda_folder in lambda_folders:
-            energies += lambda_folder.getDeltaEnergyValues()
-            print(energies)
+            energies = lambda_folder.getDeltaEnergyValues()
+            lamda_result = Calculators.calculateThermodynamicAverage(energies)
+            results.append(Calculators.zwanzigEquation(lamda_result))
 
-        result = Calculators.calculateThermodynamicAverage(energies)
-        print(result)
-        result = Calculators.zwanzingEquation(result)
-        print(result)
+        result = Calculators.calculateMean(results)
+
+        print("##############")
+        print("   Results")
+        print("##############")
+        print(" - Relative Free Energy prediction " +
+              "{:.2f} kcal/mol".format(result))

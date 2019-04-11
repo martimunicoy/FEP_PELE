@@ -13,6 +13,7 @@ DEF_MIN_CONTROL_FILE = "min_pele.conf"
 DEF_SIM_CONTROL_FILE = "sim_pele.conf"
 DEF_PP_CONTROL_FILE = "pele_recal.conf"
 DEF_SP_CONTROL_FILE = "pele_sp.conf"
+DEF_SAFETY_CHECK = False
 
 # Input file keys
 INPUT_FILE_KEYS = [
@@ -29,6 +30,7 @@ INPUT_FILE_KEYS = [
     # Free Energy Settings
     "Lambdas",
     "NumberOfProcessors",
+    "SafetyCheck",
     # List of commands
     "Commands",
     # PELE control files
@@ -53,13 +55,14 @@ CONTROL_FILE_DICT = {
     # Free Energy Settings
     "LAMBDAS": INPUT_FILE_KEYS[6],
     "NUMBER_OF_PROCESSORS": INPUT_FILE_KEYS[7],
+    "SAFETY_CHECK": INPUT_FILE_KEYS[8],
     # List of commands
-    "COMMANDS": INPUT_FILE_KEYS[8],
+    "COMMANDS": INPUT_FILE_KEYS[9],
     # PELE control files
-    "MIN_CONTROL_FILE": INPUT_FILE_KEYS[9],
-    "SIM_CONTROL_FILE": INPUT_FILE_KEYS[10],
-    "PP_CONTROL_FILE": INPUT_FILE_KEYS[11],
-    "SP_CONTROL_FILE": INPUT_FILE_KEYS[12]}
+    "MIN_CONTROL_FILE": INPUT_FILE_KEYS[10],
+    "SIM_CONTROL_FILE": INPUT_FILE_KEYS[11],
+    "PP_CONTROL_FILE": INPUT_FILE_KEYS[12],
+    "SP_CONTROL_FILE": INPUT_FILE_KEYS[13]}
 
 # List of Command names
 COMMAND_NAMES_LIST = [

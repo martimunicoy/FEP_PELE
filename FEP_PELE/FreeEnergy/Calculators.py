@@ -29,6 +29,15 @@ def calculateThermodynamicAverage(energies, temperature=300):
     return result
 
 
-def zwanzingEquation(thermodynamicAverage, temperature=300):
+def zwanzigEquation(thermodynamicAverage, temperature=300):
     kBT = co.BOLTZMANN_CONSTANT_IN_KCAL_MOL * temperature
     return - kBT * math.log(thermodynamicAverage)
+
+
+def calculateMean(values):
+    result = 0.
+
+    for value in values:
+        result += float(value)
+
+    return result / len(values)

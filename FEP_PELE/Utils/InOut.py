@@ -138,10 +138,12 @@ def write_energies_report(output_path, report_file, energies):
     with open(output_path + report_file.name, 'w') as file:
         file.write(co.REPORT_FIRST_LINE)
         for i, energy in enumerate(energies):
-            file.write(str(tasks[i]) + "    " +
-                       str(steps[i]) + "    " +
-                       str(accepted_steps[i]) + "    " +
-                       str(energy) + "    " +
+            if (energy is None):
+                continue
+            file.write(str(round(tasks[i])) + "    " +
+                       str(round(steps[i])) + "    " +
+                       str(round(accepted_steps[i])) + "    " +
+                       str(round(energy, 2)) + "    " +
                        str(energy - original_energies[i]) +
                        "\n")
 
@@ -155,3 +157,10 @@ def join_splitted_models(path, trajectory_name):
             with open(model) as model_file:
                 trajectory_file.writelines(model_file.readlines()[:-1])
             trajectory_file.write("ENDMDL" + '\n')
+
+
+def remove_splitted_models(path, trajectory_name):
+    models = glob.glob(path + '*-' + trajectory_name)
+
+    for model in models:
+        os.remove(model)

@@ -2,7 +2,6 @@
 
 
 # Python imports
-import os
 import sys
 from multiprocessing import Pool, current_process
 from functools import partial
@@ -11,6 +10,7 @@ from functools import partial
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
+from FEP_PELE.FreeEnergy.Checkers import checkModelCoords
 
 from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
     AlchemicalTemplateCreator
@@ -24,6 +24,8 @@ from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import write_recalculation_control_file
 from FEP_PELE.Utils.InOut import write_energies_report
 from FEP_PELE.Utils.InOut import join_splitted_models
+from FEP_PELE.Utils.InOut import remove_splitted_models
+
 from FEP_PELE.Utils.InOut import isThereAFile
 
 
@@ -66,9 +68,22 @@ class DoubleWideSampling(Command):
                                     logfile_name="logFile_")
             simulation.getOutputFiles()
 
+            parallelLoop = partial(self._parallelTrajectoryWriterLoop,
+                                   alchemicalTemplateCreator)
+
             with Pool(self.settings.number_of_processors) as pool:
-                pool.map(self._parallelTrajectoryWriterLoop,
-                         simulation.iterateOverReports)
+                models_to_discard = pool.map(parallelLoop,
+                                             simulation.iterateOverReports)
+
+            # Inactivate bad models
+            for model_info in models_to_discard:
+                if (len(model_info) == 0):
+                    continue
+                print("  - Removing bad model {}".format(model_info[0][2]))
+                for report in simulation.iterateOverReports:
+                    if (report.name == model_info[0][0]):
+                        report.models.inactivate(model_info[0][1])
+
             print("   Done")
 
             # ---------------------------------------------------------------------
@@ -93,7 +108,7 @@ class DoubleWideSampling(Command):
                 print(" - Minimizing and calculating energetic differences")
 
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       dir_factor * lambda_value,
+                                       lambda_value,
                                        co.DIRECTION_TO_CHAR[direction])
 
                 with Pool(self.settings.number_of_processors) as pool:
@@ -101,26 +116,30 @@ class DoubleWideSampling(Command):
 
                 print("   Done")
 
-    def _parallelTrajectoryWriterLoop(self, report_file):
+        clear_directory(self.settings.general_path + co.CALCULATION_FOLDER)
+
+    def _parallelTrajectoryWriterLoop(self, alchemicalTemplateCreator,
+                                      report_file):
+
+        models_to_discard = []
+
         for model_id in range(0, report_file.trajectory.models.number):
-            report_file.trajectory.writeModel(model_id,
-                                              self.settings.general_path +
-                                              co.CALCULATION_FOLDER +
-                                              co.MODELS_FOLDER +
-                                              str(model_id) + '-' +
-                                              report_file.trajectory.name)
 
-            model_okay = checkModelCoords(self.settings.general_path +
-                                          co.CALCULATION_FOLDER +
-                                          co.MODELS_FOLDER +
-                                          str(model_id) + '-' +
-                                          report_file.trajectory.name,
-                                          self.settings.atom_links)
+            model_name = self.settings.general_path + co.CALCULATION_FOLDER + \
+                co.MODELS_FOLDER + str(model_id) + '-' + \
+                report_file.trajectory.name
 
-            if (not model_okay):
-                os.remove(self.settings.general_path + co.CALCULATION_FOLDER +
-                          co.MODELS_FOLDER + str(model_id) + '-' +
-                          report_file.trajectory.name)
+            report_file.trajectory.writeModel(model_id, model_name)
+
+            if (self.settings.safety_check):
+                model_okay = checkModelCoords(
+                    model_name, alchemicalTemplateCreator.getFragmentAtoms())
+
+                if (not model_okay):
+                    models_to_discard.append((report_file.name, model_id,
+                                              model_name))
+
+        return models_to_discard
 
     def _parallelPELEMinimizerLoop(self, lambda_value, direction_char,
                                    report_file):
@@ -138,7 +157,7 @@ class DoubleWideSampling(Command):
 
         energies = []
 
-        for model_id in range(0, report_file.models.number):
+        for model_id, active in enumerate(report_file.models):
             pdb_name = self.settings.general_path + co.CALCULATION_FOLDER + \
                 co.MODELS_FOLDER + str(model_id) + '-' + \
                 report_file.trajectory.name
@@ -154,10 +173,10 @@ class DoubleWideSampling(Command):
             runner = PELERunner(self.settings.serial_pele,
                                 number_of_processors=1)
 
-            # TODO!!!
-            if (not isThereAFile(self.settings.general_path +
-                                 co.CALCULATION_FOLDER +
-                                 co.SINGLE_POINT_CF_NAME.format(pid))):
+            # In case bad model was previously removed
+            if (not active):
+                print("  - Warning: skipping bad model from path: " +
+                      "\'{}\'".format(pdb_name))
                 continue
 
             if (isThereAFile(trajectory_name)):
@@ -205,23 +224,9 @@ class DoubleWideSampling(Command):
         path = self.settings.general_path + co.CALCULATION_FOLDER + \
             lambda_value + "/"
 
+        # Write trajectories and reports
         write_energies_report(path, report_file, energies)
         join_splitted_models(path, report_file.trajectory.name)
 
-
-def checkModelCoords(path, atom_names):
-    coords = set()
-    # @TODO
-    atom_names = ("_C7_", "_H7_", "_H8_", "_H9_")
-    with open(path, 'r') as file:
-        for line in file:
-            atom_name = line[12:16].replace(' ', '_')
-            if (atom_name in atom_names):
-                coords.add((line[31:38],
-                            line[39:46],
-                            line[47:54]))
-
-    if (len(coords) != len(atom_names)):
-        return False
-
-    return True
+        # Clean temporal files
+        remove_splitted_models(path, report_file.trajectory.name)

@@ -9,6 +9,10 @@ class AlchemicalTemplateCreator:
         self.final_template = TemplateOPLS2005(final_template_path)
         self.pdb_atom_name_pairs = pdb_atom_name_pairs
 
+    def getFragmentAtoms(self):
+        return detect_fragment_atoms(self.initial_template,
+                                     self.final_template)
+
     def create(self, lambda_parameter, output_path):
         fragment_atoms = detect_fragment_atoms(self.initial_template,
                                                self.final_template)
