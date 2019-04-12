@@ -14,6 +14,9 @@ DEF_SIM_CONTROL_FILE = "sim_pele.conf"
 DEF_PP_CONTROL_FILE = "pele_recal.conf"
 DEF_SP_CONTROL_FILE = "pele_sp.conf"
 DEF_SAFETY_CHECK = False
+DEF_MIN_FOLDER = "minimization/"
+DEF_SIM_FOLDER = "simulation/"
+DEF_CAL_FOLDER = "calculation/"
 
 # Input file keys
 INPUT_FILE_KEYS = [
@@ -37,7 +40,11 @@ INPUT_FILE_KEYS = [
     "MinimizationControlFile",
     "SimulationControlFile",
     "PostProcessingControlFile",
-    "SinglePointControlFile"]
+    "SinglePointControlFile",
+    # Folder names
+    "MinimizationFolder",
+    "SimulationFolder",
+    "CalculationFolder"]
 
 
 # Input file dict
@@ -62,7 +69,11 @@ CONTROL_FILE_DICT = {
     "MIN_CONTROL_FILE": INPUT_FILE_KEYS[10],
     "SIM_CONTROL_FILE": INPUT_FILE_KEYS[11],
     "PP_CONTROL_FILE": INPUT_FILE_KEYS[12],
-    "SP_CONTROL_FILE": INPUT_FILE_KEYS[13]}
+    "SP_CONTROL_FILE": INPUT_FILE_KEYS[13],
+    # Folder names
+    "MIN_FOLDER": INPUT_FILE_KEYS[14],
+    "SIM_FOLDER": INPUT_FILE_KEYS[15],
+    "CAL_FOLDER": INPUT_FILE_KEYS[16]}
 
 # List of Command names
 COMMAND_NAMES_LIST = [
@@ -83,9 +94,6 @@ COMMAND_NAMES_DICT = {
     "EXPONENTIAL_AVERAGING": COMMAND_NAMES_LIST[2]}
 
 # Folder names
-SIMULATION_FOLDER = "simulation/"
-MINIMIZATION_FOLDER = "minimization/"
-CALCULATION_FOLDER = "calculation/"
 MODELS_FOLDER = "models/"
 
 # File names

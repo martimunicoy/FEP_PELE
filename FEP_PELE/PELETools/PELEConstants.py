@@ -13,3 +13,11 @@ HETEROATOMS_TEMPLATE_PATH = "DataLocal/Templates/OPLS2005/HeteroAtoms/"
 PELE_SERIAL_EXEC_TYPE = "SERIAL"
 PELE_MPI_EXEC_TYPE = "MPI"
 PELE_EXECUTABLE_TYPES = (PELE_SERIAL_EXEC_TYPE, PELE_MPI_EXEC_TYPE)
+
+# PELE Control File flag names
+CONTROL_FILE_FLAG_NAMES = ["LICENSE_PATH",
+                           "LOG_PATH",
+                           "REPORT_PATH",
+                           "TRAJECTORY_PATH",
+                           "SOLVENT_TYPE",
+                           "INPUT_PDB_NAME"]

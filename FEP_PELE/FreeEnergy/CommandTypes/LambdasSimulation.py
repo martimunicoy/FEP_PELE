@@ -3,11 +3,9 @@
 
 # Python imports
 import sys
-from subprocess import check_output, DEVNULL
 
 
 # FEP_PELE imports
-from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
     AlchemicalTemplateCreator
@@ -38,7 +36,7 @@ class LambdasSimulation(Command):
             self.settings.final_template,
             self.settings.atom_links)
 
-        full_clear_directory(self.settings.general_path + co.SIMULATION_FOLDER)
+        full_clear_directory(self.settings.simulation_path)
 
         for lambda_value in self.settings.lambdas:
             print("##############")
@@ -67,7 +65,7 @@ class LambdasSimulation(Command):
             print("   Done")
 
     def _minimize(self):
-        path = self.settings.general_path + co.MINIMIZATION_FOLDER
+        path = self.settings.minimization_path
 
         clear_directory(path)
 
@@ -81,8 +79,7 @@ class LambdasSimulation(Command):
             sys.exit(1)
 
     def _simulate(self, lambda_value):
-        path = self.settings.general_path + co.SIMULATION_FOLDER + \
-            str(lambda_value) + "/"
+        path = self.settings.simulation_path + str(lambda_value) + "/"
 
         clear_directory(path)
 

@@ -1,5 +1,11 @@
+# -*- coding: utf-8 -*-
+
+
+# Python imports
 import os
 
+
+# FEP_Pele imports
 from . import Constants as co
 from FEP_PELE.Utils.InOut import checkPath, checkFile
 from FEP_PELE.Utils.InOut import getFileFromPath
@@ -7,6 +13,15 @@ from FEP_PELE.Tools.StringTools import asPath
 from FEP_PELE.Tools.StringTools import asBool
 
 
+# Script information
+__author__ = "Marti Municoy"
+__license__ = "GPL"
+__version__ = "1.0.1"
+__maintainer__ = "Marti Municoy"
+__email__ = "marti.municoy@bsc.es"
+
+
+# Class definitions
 class Settings(object):
     def __init__(self):
         # Setting default values
@@ -24,6 +39,9 @@ class Settings(object):
         self.__pp_control_file = co.DEF_PP_CONTROL_FILE
         self.__sp_control_file = co.DEF_SP_CONTROL_FILE
         self.__safety_check = co.DEF_SAFETY_CHECK
+        self.__minimization_folder = asPath(co.DEF_MIN_FOLDER)
+        self.__simulation_folder = asPath(co.DEF_SIM_FOLDER)
+        self.__calculation_folder = asPath(co.DEF_CAL_FOLDER)
 
         # Other
         self.__default_lambdas = True
@@ -87,6 +105,30 @@ class Settings(object):
     @property
     def final_template_name(self):
         return getFileFromPath(self.__final_template)
+
+    @property
+    def minimization_folder(self):
+        return self.__minimization_folder
+
+    @property
+    def minimization_path(self):
+        return self.general_path + self.minimization_folder
+
+    @property
+    def simulation_folder(self):
+        return self.__simulation_folder
+
+    @property
+    def simulation_path(self):
+        return self.general_path + self.simulation_folder
+
+    @property
+    def calculation_folder(self):
+        return self.__calculation_folder
+
+    @property
+    def calculation_path(self):
+        return self.general_path + self.calculation_folder
 
     def set(self, key, value):
         if (key == co.CONTROL_FILE_DICT["GENERAL_PATH"]):
@@ -160,6 +202,18 @@ class Settings(object):
             value = self._getSingleValue(key, value)
             value = self._checkFile(key, value)
             self.__sp_control_file = str(value)
+
+        if (key == co.CONTROL_FILE_DICT["MIN_FOLDER"]):
+            value = self._getSingleValue(key, value)
+            self.__minimization_folder = asPath(str(value))
+
+        if (key == co.CONTROL_FILE_DICT["SIM_FOLDER"]):
+            value = self._getSingleValue(key, value)
+            self.__simulation_folder = asPath(str(value))
+
+        if (key == co.CONTROL_FILE_DICT["CAL_FOLDER"]):
+            value = self._getSingleValue(key, value)
+            self.__calculation_folder = asPath(str(value))
 
         elif (key == co.CONTROL_FILE_DICT["SAFETY_CHECK"]):
             value = self._getSingleValue(key, value)
