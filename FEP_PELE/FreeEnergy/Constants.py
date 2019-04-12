@@ -1,5 +1,7 @@
 
 
+from FEP_PELE.PELETools import PELEConstants as pele_co
+
 # Default settings
 DEF_SERIAL_PELE = ""
 DEF_MPI_PELE = ""
@@ -17,6 +19,10 @@ DEF_SAFETY_CHECK = False
 DEF_MIN_FOLDER = "minimization/"
 DEF_SIM_FOLDER = "simulation/"
 DEF_CAL_FOLDER = "calculation/"
+DEF_INPUT_PDB = ""
+DEF_INITIAL_LIGAND_PDB = ""
+DEF_FINAL_LIGAND_PDB = ""
+DEF_SOLVENT_TYPE = pele_co.SGBNP_TYPE_NAME
 
 # Input file keys
 INPUT_FILE_KEYS = [
@@ -34,6 +40,7 @@ INPUT_FILE_KEYS = [
     "Lambdas",
     "NumberOfProcessors",
     "SafetyCheck",
+    "SolventType",
     # List of commands
     "Commands",
     # PELE control files
@@ -44,8 +51,11 @@ INPUT_FILE_KEYS = [
     # Folder names
     "MinimizationFolder",
     "SimulationFolder",
-    "CalculationFolder"]
-
+    "CalculationFolder",
+    # Input PDBs
+    "InputPDB",
+    "InitialLigandPDB",
+    "FinalLigandPDB"]
 
 # Input file dict
 CONTROL_FILE_DICT = {
@@ -63,17 +73,22 @@ CONTROL_FILE_DICT = {
     "LAMBDAS": INPUT_FILE_KEYS[6],
     "NUMBER_OF_PROCESSORS": INPUT_FILE_KEYS[7],
     "SAFETY_CHECK": INPUT_FILE_KEYS[8],
+    "SOLVENT_TYPE": INPUT_FILE_KEYS[9],
     # List of commands
-    "COMMANDS": INPUT_FILE_KEYS[9],
+    "COMMANDS": INPUT_FILE_KEYS[10],
     # PELE control files
-    "MIN_CONTROL_FILE": INPUT_FILE_KEYS[10],
-    "SIM_CONTROL_FILE": INPUT_FILE_KEYS[11],
-    "PP_CONTROL_FILE": INPUT_FILE_KEYS[12],
-    "SP_CONTROL_FILE": INPUT_FILE_KEYS[13],
+    "MIN_CONTROL_FILE": INPUT_FILE_KEYS[11],
+    "SIM_CONTROL_FILE": INPUT_FILE_KEYS[12],
+    "PP_CONTROL_FILE": INPUT_FILE_KEYS[13],
+    "SP_CONTROL_FILE": INPUT_FILE_KEYS[14],
     # Folder names
-    "MIN_FOLDER": INPUT_FILE_KEYS[14],
-    "SIM_FOLDER": INPUT_FILE_KEYS[15],
-    "CAL_FOLDER": INPUT_FILE_KEYS[16]}
+    "MIN_FOLDER": INPUT_FILE_KEYS[15],
+    "SIM_FOLDER": INPUT_FILE_KEYS[16],
+    "CAL_FOLDER": INPUT_FILE_KEYS[17],
+    # Input PDB path
+    "INPUT_PDB": INPUT_FILE_KEYS[18],
+    "INITIAL_LIGAND_PDB": INPUT_FILE_KEYS[19],
+    "FINAL_LIGAND_PDB": INPUT_FILE_KEYS[20]}
 
 # List of Command names
 COMMAND_NAMES_LIST = [
@@ -82,7 +97,8 @@ COMMAND_NAMES_LIST = [
     # Samping-related commands
     "DoubleWideSampling",
     # Free Energy calculation-related commands
-    "ExponentialAveraging"]
+    "ExponentialAveraging",
+    "SolvationFreeEnergyCalculation"]
 
 # Dictionary of Command names
 COMMAND_NAMES_DICT = {
@@ -91,15 +107,18 @@ COMMAND_NAMES_DICT = {
     # Samping-related commands
     "DOUBLE_WIDE_SAMPLING": COMMAND_NAMES_LIST[1],
     # Free Energy calculation-related commands
-    "EXPONENTIAL_AVERAGING": COMMAND_NAMES_LIST[2]}
+    "EXPONENTIAL_AVERAGING": COMMAND_NAMES_LIST[2],
+    "SOLVATION_FREE_ENERGY_CALCULATION": COMMAND_NAMES_LIST[3]}
 
 # Folder names
 MODELS_FOLDER = "models/"
 
 # File names
 LOGFILE_NAME = "logfile_{}.txt"
+PDB_OUT_NAME = "pele_out.pdb"
 SINGLE_POINT_CF_NAME = "pele_sp_{}.conf"
 POST_PROCESSING_CF_NAME = "pele_recal_{}.conf"
+MINIMIZATION_CF_NAME = "pele_min.conf"
 
 # Direction definitions
 DIRECTION_NAMES = ['BACKWARDS', 'FORWARD']

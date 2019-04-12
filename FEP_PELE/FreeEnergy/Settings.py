@@ -7,10 +7,14 @@ import os
 
 # FEP_Pele imports
 from . import Constants as co
+
 from FEP_PELE.Utils.InOut import checkPath, checkFile
 from FEP_PELE.Utils.InOut import getFileFromPath
+
 from FEP_PELE.Tools.StringTools import asPath
 from FEP_PELE.Tools.StringTools import asBool
+
+from FEP_PELE.PELETools import PELEConstants as pele_co
 
 
 # Script information
@@ -42,6 +46,10 @@ class Settings(object):
         self.__minimization_folder = asPath(co.DEF_MIN_FOLDER)
         self.__simulation_folder = asPath(co.DEF_SIM_FOLDER)
         self.__calculation_folder = asPath(co.DEF_CAL_FOLDER)
+        self.__input_pdb_file = co.DEF_INPUT_PDB
+        self.__initial_ligand_pdb = co.DEF_INITIAL_LIGAND_PDB
+        self.__final_ligand_pdb = co.DEF_FINAL_LIGAND_PDB
+        self.__solvent_type = co.DEF_SOLVENT_TYPE
 
         # Other
         self.__default_lambdas = True
@@ -130,11 +138,27 @@ class Settings(object):
     def calculation_path(self):
         return self.general_path + self.calculation_folder
 
+    @property
+    def input_pdb(self):
+        return self.__input_pdb
+
+    @property
+    def initial_ligand_pdb(self):
+        return self.__initial_ligand_pdb
+
+    @property
+    def final_ligand_pdb(self):
+        return self.__final_ligand_pdb
+
+    @property
+    def solvent_type(self):
+        return self.__solvent_type
+
     def set(self, key, value):
         if (key == co.CONTROL_FILE_DICT["GENERAL_PATH"]):
             value = self._getSingleValue(key, value)
             self._checkPath(key, value)
-            self.__general_path = asPath(str(value))
+            self.__general_path = asPath(os.path.abspath(str(value)))
 
         elif (key == co.CONTROL_FILE_DICT["SERIAL_PELE_PATH"]):
             value = self._getSingleValue(key, value)
@@ -220,6 +244,26 @@ class Settings(object):
             value = self._checkBool(key, value)
             self.__safety_check = value
 
+        elif (key == co.CONTROL_FILE_DICT["INPUT_PDB"]):
+            value = self._getSingleValue(key, value)
+            value = self._checkFile(key, value)
+            self.__input_pdb_file = str(value)
+
+        elif (key == co.CONTROL_FILE_DICT["INITIAL_LIGAND_PDB"]):
+            value = self._getSingleValue(key, value)
+            value = self._checkFile(key, value)
+            self.__initial_ligand_pdb = str(value)
+
+        elif (key == co.CONTROL_FILE_DICT["FINAL_LIGAND_PDB"]):
+            value = self._getSingleValue(key, value)
+            value = self._checkFile(key, value)
+            self.__final_ligand_pdb = str(value)
+
+        elif (key == co.CONTROL_FILE_DICT["SOLVENT_TYPE"]):
+            value = self._getSingleValue(key, value)
+            self._checkSolventType(key, value)
+            self.__solvent_type = str(value)
+
     def _getSingleValue(self, key, value):
         if (len(value) != 1):
             raise NameError('Expected a single value in line with key' +
@@ -260,12 +304,13 @@ class Settings(object):
             checkFile(str(value))
         except NameError:
             try:
-                checkFile(self.general_path + str(value))
+                path = os.path.abspath(self.general_path + str(value))
+                checkFile(path)
             except NameError as exception:
                 print("Error while setting \'{}\',\'{}\'".format(key, value) +
                       ": " + str(exception))
                 exit(1)
-            return self.general_path + str(value)
+            return path
 
         return value
 
@@ -336,6 +381,20 @@ class Settings(object):
 
         for command in value:
             if (command not in co.COMMAND_NAMES_LIST):
+                okay = False
+                message += "Command not recogniced. "
+
+        if (not okay):
+            print("Error while setting \'{}\',\'{}\'".format(key, value) +
+                  ": " + message)
+            exit(1)
+
+    def _checkSolventType(self, key, value):
+        okay = True
+        message = ""
+
+        for command in value:
+            if (command not in pele_co.SOLVENT_TYPE_NAMES):
                 okay = False
                 message += "Command not recogniced. "
 

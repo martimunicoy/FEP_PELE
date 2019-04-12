@@ -9,6 +9,8 @@ from . import Constants as co
 from .CommandTypes.LambdasSimulation import LambdasSimulation
 from .CommandTypes.DoubleWideSampling import DoubleWideSampling
 from .CommandTypes.ExponentialAveraging import ExponentialAveraging
+from .CommandTypes.SolvationFreeEnergyCalculation \
+    import SolvationFreeEnergyCalculation
 
 
 # Script information
@@ -39,6 +41,9 @@ class CommandsBuilder(object):
             return DoubleWideSampling(self.settings)
         elif (command_name == co.COMMAND_NAMES_DICT["EXPONENTIAL_AVERAGING"]):
             return ExponentialAveraging(self.settings)
+        elif (command_name == co.COMMAND_NAMES_DICT[
+                "SOLVATION_FREE_ENERGY_CALCULATION"]):
+            return SolvationFreeEnergyCalculation(self.settings)
         else:
             print("Command {} not recogniced".format(command_name))
             exit(1)

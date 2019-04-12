@@ -29,13 +29,13 @@ def isThereAPath(path):
 def checkFile(file_path):
     file_path = str(file_path)
     if (not os.path.exists(file_path)):
-        raise NameError("Invalid path to file")
+        raise NameError("Invalid path to file: " + file_path)
 
 
 def checkPath(path):
     path = str(path)
     if (not os.path.isdir(path)):
-        raise NameError("Invalid path")
+        raise NameError("Invalid path: " + path)
 
 
 def getFileFromPath(path):
@@ -86,6 +86,17 @@ def create_directory(path):
             os.makedirs(path)
         except OSError:
             pass
+
+
+def copyFile(file_to_copy, destination_path):
+    try:
+        checkFile(file_to_copy)
+        checkPath(destination_path)
+    except NameError as e:
+        raise NameError("CopyFile Error: " + str(e))
+
+    shutil.copyfile(file_to_copy,
+                    destination_path + getFileFromPath(file_to_copy))
 
 
 def write_lambda_value_to_control_file(input_path, lambda_value,

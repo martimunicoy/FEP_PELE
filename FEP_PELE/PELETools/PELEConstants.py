@@ -2,6 +2,7 @@
 
 # Constants regarding PELE standard output
 ENERGY_RESULT_LINE = "ENERGY VACUUM + SGB + CONSTRAINTS + SELF + NON POLAR:"
+ENERGY_RESULT_LINE_IN_VACUUM = "ENERGY VACUUM + CONSTRAINTS:"
 
 # Constants regarding PELE report file
 REPORT_TOTAL_ENERGY_COLUMN = 4
@@ -21,3 +22,11 @@ CONTROL_FILE_FLAG_NAMES = ["LICENSE_PATH",
                            "TRAJECTORY_PATH",
                            "SOLVENT_TYPE",
                            "INPUT_PDB_NAME"]
+
+# PELE solvent type names
+VACUUM_TYPE_NAME = "VACUUM"
+SGBNP_TYPE_NAME = "SGBNP"
+
+# Solvent type names
+SOLVENT_TYPE_NAMES = [VACUUM_TYPE_NAME,
+                      SGBNP_TYPE_NAME]
