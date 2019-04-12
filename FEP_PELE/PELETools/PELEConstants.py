@@ -27,6 +27,6 @@ CONTROL_FILE_FLAG_NAMES = ["LICENSE_PATH",
 VACUUM_TYPE_NAME = "VACUUM"
 SGBNP_TYPE_NAME = "SGBNP"
 
-# Solvent type names
+# List of PELE solvent type names
 SOLVENT_TYPE_NAMES = [VACUUM_TYPE_NAME,
                       SGBNP_TYPE_NAME]

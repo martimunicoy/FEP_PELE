@@ -44,6 +44,10 @@ class DoubleWideSampling(Command):
         self.directions = co.DOUBLE_WIDE_SAMPLING_DIRECTIONS
 
     def run(self):
+        print("######################")
+        print(" Double Wide Sampling")
+        print("######################")
+
         alchemicalTemplateCreator = AlchemicalTemplateCreator(
             self.settings.initial_template,
             self.settings.final_template,
@@ -52,9 +56,7 @@ class DoubleWideSampling(Command):
         clear_directory(self.settings.calculation_path)
 
         for i, lambda_value in enumerate(self.settings.lambdas):
-            print("##############")
-            print(" Lambda: " + str(lambda_value))
-            print("##############")
+            print("\n# Lambda: {} #\n".format(lambda_value))
 
             clear_directory(self.settings.calculation_path + co.MODELS_FOLDER)
 

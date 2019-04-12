@@ -24,6 +24,9 @@ class ExponentialAveraging(Command):
         Command.__init__(self, settings)
 
     def run(self):
+        print("#######################")
+        print(" Exponential Averaging")
+        print("#######################")
         path = self.settings.calculation_path
 
         if (not isThereAPath(path)):
@@ -44,8 +47,5 @@ class ExponentialAveraging(Command):
 
         result = Calculators.calculateMean(results)
 
-        print("##############")
-        print("   Results")
-        print("##############")
         print(" - Relative Free Energy prediction " +
               "{:.2f} kcal/mol".format(result))

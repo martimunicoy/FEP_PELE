@@ -62,9 +62,6 @@ class SolvationFreeEnergyCalculation(Command):
 
         result = final_ligand_energy - initial_ligand_energy
 
-        print("##############")
-        print("   Results")
-        print("##############")
         print(" - Relative Solvation Free Energy prediction " +
               "{:.2f} kcal/mol".format(result))
 

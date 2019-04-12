@@ -31,6 +31,10 @@ class LambdasSimulation(Command):
         Command.__init__(self, settings)
 
     def run(self):
+        print("####################")
+        print(" Lambda Simulations")
+        print("####################")
+
         alchemicalTemplateCreator = AlchemicalTemplateCreator(
             self.settings.initial_template,
             self.settings.final_template,
@@ -39,9 +43,8 @@ class LambdasSimulation(Command):
         full_clear_directory(self.settings.simulation_path)
 
         for lambda_value in self.settings.lambdas:
-            print("##############")
-            print(" Lambda: " + str(lambda_value))
-            print("##############")
+            print("\n# Lambda: {} #\n".format(lambda_value))
+
             print(" - Creating alchemical template")
 
             alchemicalTemplateCreator.create(
