@@ -48,6 +48,7 @@ class LambdasSimulation(Command):
             self.settings.final_template,
             self.settings.atom_links)
 
+        # @TODO: add capacity to restart without losing previous information
         # Clear all directories
         full_clear_directory(self.settings.simulation_path)
         full_clear_directory(self.settings.calculation_path)
