@@ -1,12 +1,31 @@
+# -*- coding: utf-8 -*-
+
+
+# Python imports
 import os
 
+
+# FEP_Pele imports
 from . import Constants as co
+
 from FEP_PELE.Utils.InOut import checkPath, checkFile
 from FEP_PELE.Utils.InOut import getFileFromPath
+
 from FEP_PELE.Tools.StringTools import asPath
 from FEP_PELE.Tools.StringTools import asBool
 
+from FEP_PELE.PELETools import PELEConstants as pele_co
 
+
+# Script information
+__author__ = "Marti Municoy"
+__license__ = "GPL"
+__version__ = "1.0.1"
+__maintainer__ = "Marti Municoy"
+__email__ = "marti.municoy@bsc.es"
+
+
+# Class definitions
 class Settings(object):
     def __init__(self):
         # Setting default values
@@ -24,9 +43,17 @@ class Settings(object):
         self.__pp_control_file = co.DEF_PP_CONTROL_FILE
         self.__sp_control_file = co.DEF_SP_CONTROL_FILE
         self.__safety_check = co.DEF_SAFETY_CHECK
+        self.__minimization_folder = asPath(co.DEF_MIN_FOLDER)
+        self.__simulation_folder = asPath(co.DEF_SIM_FOLDER)
+        self.__calculation_folder = asPath(co.DEF_CAL_FOLDER)
+        self.__input_pdb = co.DEF_INPUT_PDB
+        self.__initial_ligand_pdb = co.DEF_INITIAL_LIGAND_PDB
+        self.__final_ligand_pdb = co.DEF_FINAL_LIGAND_PDB
+        self.__solvent_type = co.DEF_SOLVENT_TYPE
 
         # Other
         self.__default_lambdas = True
+        self.__splitted_lennardjones_and_coulomb = False
 
     @property
     def general_path(self):
@@ -88,11 +115,51 @@ class Settings(object):
     def final_template_name(self):
         return getFileFromPath(self.__final_template)
 
+    @property
+    def minimization_folder(self):
+        return self.__minimization_folder
+
+    @property
+    def minimization_path(self):
+        return self.general_path + self.minimization_folder
+
+    @property
+    def simulation_folder(self):
+        return self.__simulation_folder
+
+    @property
+    def simulation_path(self):
+        return self.general_path + self.simulation_folder
+
+    @property
+    def calculation_folder(self):
+        return self.__calculation_folder
+
+    @property
+    def calculation_path(self):
+        return self.general_path + self.calculation_folder
+
+    @property
+    def input_pdb(self):
+        return self.__input_pdb
+
+    @property
+    def initial_ligand_pdb(self):
+        return self.__initial_ligand_pdb
+
+    @property
+    def final_ligand_pdb(self):
+        return self.__final_ligand_pdb
+
+    @property
+    def solvent_type(self):
+        return self.__solvent_type
+
     def set(self, key, value):
         if (key == co.CONTROL_FILE_DICT["GENERAL_PATH"]):
             value = self._getSingleValue(key, value)
             self._checkPath(key, value)
-            self.__general_path = asPath(str(value))
+            self.__general_path = asPath(os.path.abspath(str(value)))
 
         elif (key == co.CONTROL_FILE_DICT["SERIAL_PELE_PATH"]):
             value = self._getSingleValue(key, value)
@@ -161,10 +228,42 @@ class Settings(object):
             value = self._checkFile(key, value)
             self.__sp_control_file = str(value)
 
+        if (key == co.CONTROL_FILE_DICT["MIN_FOLDER"]):
+            value = self._getSingleValue(key, value)
+            self.__minimization_folder = asPath(str(value))
+
+        if (key == co.CONTROL_FILE_DICT["SIM_FOLDER"]):
+            value = self._getSingleValue(key, value)
+            self.__simulation_folder = asPath(str(value))
+
+        if (key == co.CONTROL_FILE_DICT["CAL_FOLDER"]):
+            value = self._getSingleValue(key, value)
+            self.__calculation_folder = asPath(str(value))
+
         elif (key == co.CONTROL_FILE_DICT["SAFETY_CHECK"]):
             value = self._getSingleValue(key, value)
             value = self._checkBool(key, value)
             self.__safety_check = value
+
+        elif (key == co.CONTROL_FILE_DICT["INPUT_PDB"]):
+            value = self._getSingleValue(key, value)
+            value = self._checkFile(key, value)
+            self.__input_pdb = str(value)
+
+        elif (key == co.CONTROL_FILE_DICT["INITIAL_LIGAND_PDB"]):
+            value = self._getSingleValue(key, value)
+            value = self._checkFile(key, value)
+            self.__initial_ligand_pdb = str(value)
+
+        elif (key == co.CONTROL_FILE_DICT["FINAL_LIGAND_PDB"]):
+            value = self._getSingleValue(key, value)
+            value = self._checkFile(key, value)
+            self.__final_ligand_pdb = str(value)
+
+        elif (key == co.CONTROL_FILE_DICT["SOLVENT_TYPE"]):
+            value = self._getSingleValue(key, value)
+            self._checkSolventType(key, value)
+            self.__solvent_type = str(value)
 
     def _getSingleValue(self, key, value):
         if (len(value) != 1):
@@ -206,12 +305,13 @@ class Settings(object):
             checkFile(str(value))
         except NameError:
             try:
-                checkFile(self.general_path + str(value))
+                path = os.path.abspath(self.general_path + str(value))
+                checkFile(path)
             except NameError as exception:
                 print("Error while setting \'{}\',\'{}\'".format(key, value) +
                       ": " + str(exception))
                 exit(1)
-            return self.general_path + str(value)
+            return path
 
         return value
 
@@ -282,6 +382,20 @@ class Settings(object):
 
         for command in value:
             if (command not in co.COMMAND_NAMES_LIST):
+                okay = False
+                message += "Command not recogniced. "
+
+        if (not okay):
+            print("Error while setting \'{}\',\'{}\'".format(key, value) +
+                  ": " + message)
+            exit(1)
+
+    def _checkSolventType(self, key, value):
+        okay = True
+        message = ""
+
+        for command in value:
+            if (command not in pele_co.SOLVENT_TYPE_NAMES):
                 okay = False
                 message += "Command not recogniced. "
 

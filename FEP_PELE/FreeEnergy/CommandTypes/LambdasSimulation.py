@@ -3,20 +3,26 @@
 
 # Python imports
 import sys
-from subprocess import check_output, DEVNULL
+import random
 
 
 # FEP_PELE imports
-from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
+from FEP_PELE.FreeEnergy import Constants as co
+
 from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
     AlchemicalTemplateCreator
+
 from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import full_clear_directory
 from FEP_PELE.Utils.InOut import write_lambda_value_to_control_file
 from FEP_PELE.Utils.InOut import getFileFromPath
+from FEP_PELE.Utils.InOut import writeLambdaTitle
+
 from FEP_PELE.PELETools import PELEConstants as pele_co
 from FEP_PELE.PELETools.PELERunner import PELERunner
+from FEP_PELE.PELETools.ControlFileCreator import \
+    ControlFileFromTemplateCreator
 
 
 # Script information
@@ -33,17 +39,23 @@ class LambdasSimulation(Command):
         Command.__init__(self, settings)
 
     def run(self):
+        print("####################")
+        print(" Lambda Simulations")
+        print("####################")
+
         alchemicalTemplateCreator = AlchemicalTemplateCreator(
             self.settings.initial_template,
             self.settings.final_template,
             self.settings.atom_links)
 
-        full_clear_directory(self.settings.general_path + co.SIMULATION_FOLDER)
+        # Clear all directories
+        full_clear_directory(self.settings.simulation_path)
+        full_clear_directory(self.settings.calculation_path)
+        full_clear_directory(self.settings.minimization_path)
 
         for lambda_value in self.settings.lambdas:
-            print("##############")
-            print(" Lambda: " + str(lambda_value))
-            print("##############")
+            writeLambdaTitle(lambda_value)
+
             print(" - Creating alchemical template")
 
             alchemicalTemplateCreator.create(
@@ -67,37 +79,68 @@ class LambdasSimulation(Command):
             print("   Done")
 
     def _minimize(self):
-        path = self.settings.general_path + co.MINIMIZATION_FOLDER
+        path = self.settings.minimization_path
 
         clear_directory(path)
+
+        self._writeMinimizationControlFile()
 
         runner = PELERunner(self.settings.serial_pele,
                             number_of_processors=1)
 
         try:
-            runner.run(self.settings.min_control_file)
+            runner.run(self.settings.minimization_path +
+                       co.MINIMIZATION_CF_NAME)
         except SystemExit as exception:
             print("LambdasSimulation error: \n" + str(exception))
             sys.exit(1)
 
     def _simulate(self, lambda_value):
-        path = self.settings.general_path + co.SIMULATION_FOLDER + \
-            str(lambda_value) + "/"
+        path = self.settings.simulation_path + str(lambda_value) + "/"
+
+        control_file_name = getFileFromPath(self.settings.sim_control_file)
 
         clear_directory(path)
+
+        self._writeSimulationControlFile(path, control_file_name)
 
         runner = PELERunner(
             self.settings.mpi_pele,
             number_of_processors=self.settings.number_of_processors)
-
-        control_file_name = getFileFromPath(self.settings.sim_control_file)
-
-        write_lambda_value_to_control_file(self.settings.sim_control_file,
-                                           lambda_value,
-                                           path + control_file_name)
 
         try:
             runner.run(path + control_file_name)
         except SystemExit as exception:
             print("LambdasSimulation error: \n" + str(exception))
             sys.exit(1)
+
+    def _writeMinimizationControlFile(self):
+        cf_creator = ControlFileFromTemplateCreator(
+            self.settings.min_control_file)
+
+        cf_creator.replaceFlag("INPUT_PDB_NAME", self.settings.input_pdb)
+        cf_creator.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
+        cf_creator.replaceFlag("LOG_PATH", self.settings.minimization_path +
+                               co.SINGLE_LOGFILE_NAME)
+        cf_creator.replaceFlag("TRAJECTORY_PATH",
+                               self.settings.minimization_path +
+                               getFileFromPath(self.settings.input_pdb))
+
+        cf_creator.write(self.settings.minimization_path +
+                         co.MINIMIZATION_CF_NAME)
+
+    def _writeSimulationControlFile(self, path, name):
+        cf_creator = ControlFileFromTemplateCreator(
+            self.settings.sim_control_file)
+
+        cf_creator.replaceFlag("INPUT_PDB_NAME",
+                               self.settings.minimization_path +
+                               getFileFromPath(self.settings.input_pdb))
+        cf_creator.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
+        cf_creator.replaceFlag("LOG_PATH", path + co.SINGLE_LOGFILE_NAME)
+        cf_creator.replaceFlag("REPORT_PATH", path + co.SINGLE_REPORT_NAME)
+        cf_creator.replaceFlag("TRAJECTORY_PATH", path +
+                               co.SINGLE_TRAJECTORY_NAME)
+        cf_creator.replaceFlag("SEED", random.randint(0, 999999))
+
+        cf_creator.write(path + name)

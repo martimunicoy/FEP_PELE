@@ -18,14 +18,15 @@ from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
 from FEP_PELE.PELETools import PELEConstants as pele_co
 from FEP_PELE.PELETools.SimulationParser import Simulation
 from FEP_PELE.PELETools.PELERunner import PELERunner
+from FEP_PELE.PELETools.ControlFileCreator import \
+    ControlFileFromTemplateCreator
 
 from FEP_PELE.Utils.InOut import create_directory
 from FEP_PELE.Utils.InOut import clear_directory
-from FEP_PELE.Utils.InOut import write_recalculation_control_file
 from FEP_PELE.Utils.InOut import write_energies_report
 from FEP_PELE.Utils.InOut import join_splitted_models
 from FEP_PELE.Utils.InOut import remove_splitted_models
-
+from FEP_PELE.Utils.InOut import writeLambdaTitle
 from FEP_PELE.Utils.InOut import isThereAFile
 
 
@@ -44,24 +45,24 @@ class DoubleWideSampling(Command):
         self.directions = co.DOUBLE_WIDE_SAMPLING_DIRECTIONS
 
     def run(self):
+        print("######################")
+        print(" Double Wide Sampling")
+        print("######################")
+
         alchemicalTemplateCreator = AlchemicalTemplateCreator(
             self.settings.initial_template,
             self.settings.final_template,
             self.settings.atom_links)
 
-        clear_directory(self.settings.general_path + co.CALCULATION_FOLDER)
+        clear_directory(self.settings.calculation_path)
 
         for i, lambda_value in enumerate(self.settings.lambdas):
-            print("##############")
-            print(" Lambda: " + str(lambda_value))
-            print("##############")
+            writeLambdaTitle(lambda_value)
 
-            clear_directory(self.settings.general_path +
-                            co.CALCULATION_FOLDER + co.MODELS_FOLDER)
+            clear_directory(self.settings.calculation_path + co.MODELS_FOLDER)
 
             print(" - Splitting PELE models")
-            simulation = Simulation(self.settings.general_path +
-                                    co.SIMULATION_FOLDER +
+            simulation = Simulation(self.settings.simulation_path +
                                     str(lambda_value), sim_type="PELE",
                                     report_name="report_",
                                     trajectory_name="trajectory_",
@@ -76,13 +77,14 @@ class DoubleWideSampling(Command):
                                              simulation.iterateOverReports)
 
             # Inactivate bad models
-            for model_info in models_to_discard:
-                if (len(model_info) == 0):
+            for model_info_chunks in models_to_discard:
+                if (len(model_info_chunks) == 0):
                     continue
-                print("  - Removing bad model {}".format(model_info[0][2]))
-                for report in simulation.iterateOverReports:
-                    if (report.name == model_info[0][0]):
-                        report.models.inactivate(model_info[0][1])
+                for model_info in model_info_chunks:
+                    print("  - Removing bad model {}".format(model_info[2]))
+                    for report in simulation.iterateOverReports:
+                        if (report.name == model_info[0]):
+                            report.models.inactivate(model_info[1])
 
             print("   Done")
 
@@ -116,7 +118,7 @@ class DoubleWideSampling(Command):
 
                 print("   Done")
 
-        clear_directory(self.settings.general_path + co.CALCULATION_FOLDER)
+        clear_directory(self.settings.calculation_path)
 
     def _parallelTrajectoryWriterLoop(self, alchemicalTemplateCreator,
                                       report_file):
@@ -125,9 +127,8 @@ class DoubleWideSampling(Command):
 
         for model_id in range(0, report_file.trajectory.models.number):
 
-            model_name = self.settings.general_path + co.CALCULATION_FOLDER + \
-                co.MODELS_FOLDER + str(model_id) + '-' + \
-                report_file.trajectory.name
+            model_name = self.settings.calculation_path + co.MODELS_FOLDER + \
+                str(model_id) + '-' + report_file.trajectory.name
 
             report_file.trajectory.writeModel(model_id, model_name)
 
@@ -146,11 +147,11 @@ class DoubleWideSampling(Command):
 
         lambda_value = str(round(lambda_value, 3)) + direction_char
 
-        create_directory(self.settings.general_path + co.CALCULATION_FOLDER +
-                         lambda_value + "/")
+        dir_name = self.settings.calculation_path + lambda_value + "/"
 
-        if (isThereAFile(self.settings.general_path + co.CALCULATION_FOLDER +
-                         lambda_value + "/" + report_file.trajectory.name)):
+        create_directory(dir_name)
+
+        if (isThereAFile(dir_name + report_file.trajectory.name)):
             return
 
         pid = current_process().pid
@@ -158,17 +159,14 @@ class DoubleWideSampling(Command):
         energies = []
 
         for model_id, active in enumerate(report_file.models):
-            pdb_name = self.settings.general_path + co.CALCULATION_FOLDER + \
-                co.MODELS_FOLDER + str(model_id) + '-' + \
-                report_file.trajectory.name
+            pdb_name = self.settings.calculation_path + co.MODELS_FOLDER + \
+                str(model_id) + '-' + report_file.trajectory.name
 
-            logfile_name = self.settings.general_path + \
-                co.CALCULATION_FOLDER + co.LOGFILE_NAME.format(pid)
+            logfile_name = self.settings.calculation_path \
+                + co.LOGFILE_NAME.format(pid)
 
-            trajectory_name = self.settings.general_path + \
-                co.CALCULATION_FOLDER + lambda_value + "/" + \
-                str(model_id) + '-' + \
-                report_file.trajectory.name
+            trajectory_name = self.settings.calculation_path + lambda_value + \
+                "/" + str(model_id) + '-' + report_file.trajectory.name
 
             runner = PELERunner(self.settings.serial_pele,
                                 number_of_processors=1)
@@ -180,34 +178,32 @@ class DoubleWideSampling(Command):
                 continue
 
             if (isThereAFile(trajectory_name)):
-                write_recalculation_control_file(
+                self._writeRecalculationControlFile(
                     self.settings.sp_control_file,
                     pdb_name,
                     logfile_name,
                     trajectory_name,
-                    self.settings.general_path + co.CALCULATION_FOLDER +
+                    self.settings.calculation_path +
                     co.SINGLE_POINT_CF_NAME.format(pid))
 
                 try:
-                    output = runner.run(self.settings.general_path +
-                                        co.CALCULATION_FOLDER +
+                    output = runner.run(self.settings.calculation_path +
                                         co.SINGLE_POINT_CF_NAME.format(pid))
                 except SystemExit as exception:
                     print("DoubleWideSampling error: \n" + str(exception))
                     sys.exit(1)
 
             else:
-                write_recalculation_control_file(
+                self._writeRecalculationControlFile(
                     self.settings.pp_control_file,
                     pdb_name,
                     logfile_name,
                     trajectory_name,
-                    self.settings.general_path + co.CALCULATION_FOLDER +
+                    self.settings.calculation_path +
                     co.POST_PROCESSING_CF_NAME.format(pid))
 
                 try:
-                    output = runner.run(self.settings.general_path +
-                                        co.CALCULATION_FOLDER +
+                    output = runner.run(self.settings.calculation_path +
                                         co.POST_PROCESSING_CF_NAME.format(pid))
                 except SystemExit as exception:
                     print("DoubleWideSampling error: \n" + str(exception))
@@ -221,8 +217,7 @@ class DoubleWideSampling(Command):
                 print("Error: energy calculation failed")
                 print(output)
 
-        path = self.settings.general_path + co.CALCULATION_FOLDER + \
-            lambda_value + "/"
+        path = self.settings.calculation_path + lambda_value + "/"
 
         # Write trajectories and reports
         write_energies_report(path, report_file, energies)
@@ -230,3 +225,15 @@ class DoubleWideSampling(Command):
 
         # Clean temporal files
         remove_splitted_models(path, report_file.trajectory.name)
+
+    def _writeRecalculationControlFile(self, template_path, pdb_name,
+                                       logfile_name,
+                                       trajectory_name, output_path):
+        cf_creator = ControlFileFromTemplateCreator(template_path)
+
+        cf_creator.replaceFlag("INPUT_PDB_NAME", pdb_name)
+        cf_creator.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
+        cf_creator.replaceFlag("LOG_PATH", logfile_name)
+        cf_creator.replaceFlag("TRAJECTORY_PATH", trajectory_name)
+
+        cf_creator.write(output_path)

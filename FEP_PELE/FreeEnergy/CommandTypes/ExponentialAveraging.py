@@ -8,7 +8,6 @@ import sys
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.Utils.InOut import isThereAPath
-from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy import Calculators
 
 # Script information
@@ -25,7 +24,10 @@ class ExponentialAveraging(Command):
         Command.__init__(self, settings)
 
     def run(self):
-        path = self.settings.general_path + co.CALCULATION_FOLDER
+        print("#######################")
+        print(" Exponential Averaging")
+        print("#######################")
+        path = self.settings.calculation_path
 
         if (not isThereAPath(path)):
             print("Error: no lambda calculation was found in the expected " +
@@ -45,8 +47,5 @@ class ExponentialAveraging(Command):
 
         result = Calculators.calculateMean(results)
 
-        print("##############")
-        print("   Results")
-        print("##############")
         print(" - Relative Free Energy prediction " +
               "{:.2f} kcal/mol".format(result))

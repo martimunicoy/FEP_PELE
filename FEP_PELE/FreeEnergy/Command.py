@@ -33,8 +33,8 @@ class Command(object):
         if (position == 0):
             return round(abs(self.settings.lambdas[position]), 3)
         else:
-            return round(abs(self.settings.lambdas[position - 1] -
-                             self.settings.lambdas[position]), 3)
+            return round(abs((self.settings.lambdas[position - 1] -
+                             self.settings.lambdas[position]) / 2.), 3)
 
     def _getLambdaFolders(self, path):
         folders = getFoldersInAPath(path)

@@ -29,13 +29,13 @@ def isThereAPath(path):
 def checkFile(file_path):
     file_path = str(file_path)
     if (not os.path.exists(file_path)):
-        raise NameError("Invalid path to file")
+        raise NameError("Invalid path to file: " + file_path)
 
 
 def checkPath(path):
     path = str(path)
     if (not os.path.isdir(path)):
-        raise NameError("Invalid path")
+        raise NameError("Invalid path: " + path)
 
 
 def getFileFromPath(path):
@@ -72,6 +72,7 @@ def full_clear_directory(path):
         os.makedirs(path)
     else:
         shutil.rmtree(path)
+        os.makedirs(path)
 
 
 def clear_file(path):
@@ -86,6 +87,17 @@ def create_directory(path):
             os.makedirs(path)
         except OSError:
             pass
+
+
+def copyFile(file_to_copy, destination_path):
+    try:
+        checkFile(file_to_copy)
+        checkPath(destination_path)
+    except NameError as e:
+        raise NameError("CopyFile Error: " + str(e))
+
+    shutil.copyfile(file_to_copy,
+                    destination_path + getFileFromPath(file_to_copy))
 
 
 def write_lambda_value_to_control_file(input_path, lambda_value,
@@ -164,3 +176,13 @@ def remove_splitted_models(path, trajectory_name):
 
     for model in models:
         os.remove(model)
+
+
+def writeLambdaTitle(lambda_value):
+    title = "Lambda: {}".format(lambda_value)
+
+    print()
+    print(title)
+    for i in range(0, len(title)):
+        print('-', end='')
+    print()
