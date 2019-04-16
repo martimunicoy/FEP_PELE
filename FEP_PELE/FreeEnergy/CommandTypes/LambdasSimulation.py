@@ -35,7 +35,12 @@ __email__ = "marti.municoy@bsc.es"
 # Class definitions
 class LambdasSimulation(Command):
     def __init__(self, settings):
+        self._name = co.COMMAND_NAMES_DICT["LAMBDA_SIMULATION"]
         Command.__init__(self, settings)
+
+    @property
+    def name(self):
+        return self._name
 
     def run(self):
         print("####################")
@@ -49,9 +54,14 @@ class LambdasSimulation(Command):
 
         # @TODO: add capacity to restart without losing previous information
         # Clear all directories
-        full_clear_directory(self.settings.simulation_path)
-        full_clear_directory(self.settings.calculation_path)
-        full_clear_directory(self.settings.minimization_path)
+        if (not self.settings.restart):
+            full_clear_directory(self.settings.simulation_path)
+            full_clear_directory(self.settings.calculation_path)
+            full_clear_directory(self.settings.minimization_path)
+        else:
+            clear_directory(self.settings.simulation_path)
+            clear_directory(self.settings.calculation_path)
+            clear_directory(self.settings.minimization_path)
 
         if (self.settings.splitted_lambdas):
             self._run_with_splitted_lambdas(alchemicalTemplateCreator)
@@ -62,6 +72,11 @@ class LambdasSimulation(Command):
     def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
              constant_lambda=None):
         for lambda_ in Lambda.IterateOverLambdas(lambdas, lambdas_type):
+            if (self.checkPoint.check((self.name, str(num) +
+                                       str(lambda_.type) +
+                                       str(lambda_.value)))):
+                continue
+
             writeLambdaTitle(lambda_)
 
             print(" - Creating alchemical template")
@@ -82,6 +97,9 @@ class LambdasSimulation(Command):
             self._simulate(lambda_, num)
 
             print("   Done")
+
+            self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
+                                  str(lambda_.value)))
 
     def _minimize(self):
         path = self.settings.minimization_path

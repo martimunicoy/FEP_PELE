@@ -6,9 +6,11 @@ import sys
 
 
 # FEP_PELE imports
+from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
-from FEP_PELE.Utils.InOut import isThereAPath
 from FEP_PELE.FreeEnergy import Calculators
+
+from FEP_PELE.Utils.InOut import isThereAPath
 
 from FEP_PELE.TemplateHandler import Lambda
 
@@ -23,7 +25,12 @@ __email__ = "marti.municoy@bsc.es"
 # Class definitions
 class ExponentialAveraging(Command):
     def __init__(self, settings):
+        self._name = co.COMMAND_NAMES_DICT["EXPONENTIAL_AVERAGING"]
         Command.__init__(self, settings)
+
+    @property
+    def name(self):
+        return self._name
 
     def run(self):
         print("#######################")

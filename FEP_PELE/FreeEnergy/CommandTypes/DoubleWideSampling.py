@@ -42,8 +42,13 @@ __email__ = "marti.municoy@bsc.es"
 # Class definitions
 class DoubleWideSampling(Command):
     def __init__(self, settings):
+        self._name = co.COMMAND_NAMES_DICT["DOUBLE_WIDE_SAMPLING"]
         Command.__init__(self, settings)
         self.directions = co.DOUBLE_WIDE_SAMPLING_DIRECTIONS
+        
+    @property
+    def name(self):
+        return self._name
 
     def run(self):
         print("######################")

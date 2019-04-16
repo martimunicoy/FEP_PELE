@@ -38,7 +38,7 @@ class Settings(object):
         self.__lambdas = co.DEF_LAMBDAS
         self.__lj_lambdas = co.DEF_LJ_LAMBDAS
         self.__c_lambdas = co.DEF_C_LAMBDAS
-        self.__number_of_processors = co.DEF_NUMBER_OF_PROCESSORDS
+        self.__number_of_processors = co.DEF_NUMBER_OF_PROCESSORS
         self.__commands = co.DEF_COMMANDS
         self.__min_control_file = co.DEF_MIN_CONTROL_FILE
         self.__sim_control_file = co.DEF_SIM_CONTROL_FILE
@@ -53,6 +53,7 @@ class Settings(object):
         self.__final_ligand_pdb = co.DEF_FINAL_LIGAND_PDB
         self.__solvent_type = co.DEF_SOLVENT_TYPE
         self.__splitted_lambdas = co.DEF_LAMBDA_SPLITTING
+        self.__restart = co.DEF_RESTART
 
         # Other
         self.__default_lambdas = True
@@ -172,6 +173,10 @@ class Settings(object):
     @property
     def splitted_lambdas(self):
         return self.__splitted_lambdas
+
+    @property
+    def restart(self):
+        return self.__restart
 
     def set(self, key, value):
         if (key == co.CONTROL_FILE_DICT["GENERAL_PATH"]):
@@ -301,6 +306,11 @@ class Settings(object):
             value = self._checkBool(key, value)
             self.__safety_check = value
 
+        elif (key == co.CONTROL_FILE_DICT["RESTART"]):
+            value = self._getSingleValue(key, value)
+            value = self._checkBool(key, value)
+            self.__restart = value
+
         elif (key == co.CONTROL_FILE_DICT["INPUT_PDB"]):
             value = self._getSingleValue(key, value)
             value = self._checkFile(key, value)
@@ -320,6 +330,31 @@ class Settings(object):
             value = self._getSingleValue(key, value)
             self._checkSolventType(key, value)
             self.__solvent_type = str(value)
+
+    def __str__(self):
+        return str(self.general_path) + ';' + \
+            str(self.serial_pele) + ';' + \
+            str(self.mpi_pele) + ';' + \
+            str(self.initial_template) + ';' + \
+            str(self.final_template) + ';' + \
+            str(self.atom_links) + ';' + \
+            str(self.lambdas) + ';' + \
+            str(self.lj_lambdas) + ';' + \
+            str(self.c_lambdas) + ';' + \
+            str(self.number_of_processors) + ';' + \
+            str(self.min_control_file) + ';' + \
+            str(self.sim_control_file) + ';' + \
+            str(self.pp_control_file) + ';' + \
+            str(self.sp_control_file) + ';' + \
+            str(self.safety_check) + ';' + \
+            str(self.minimization_folder) + ';' + \
+            str(self.simulation_folder) + ';' + \
+            str(self.calculation_folder) + ';' + \
+            str(self.input_pdb) + ';' + \
+            str(self.initial_ligand_pdb) + ';' + \
+            str(self.final_ligand_pdb) + ';' + \
+            str(self.solvent_type) + ';' + \
+            str(self.splitted_lambdas) + '\n'
 
     def _getSingleValue(self, key, value):
         if (len(value) != 1):

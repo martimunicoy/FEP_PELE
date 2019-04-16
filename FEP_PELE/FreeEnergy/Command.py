@@ -7,6 +7,7 @@ import os
 
 # FEP_PELE imports
 from . import Constants as co
+from .CheckPoint import CheckPoint
 
 from FEP_PELE.Tools.LambdaFolder import LambdaFolder
 
@@ -33,6 +34,17 @@ class Command(object):
         # PELE needs to be working in the general path in order to find the
         # the required Data and Document folders
         os.chdir(self.settings.general_path)
+
+        checkPoint = CheckPoint(self.settings.general_path +
+                                co.CHECKPOINT_NAME,
+                                self.settings)
+
+        try:
+            checkPoint.initialize()
+        except RuntimeError as e:
+            print("  - {} Warning: ".format(self.name) + str(e))
+
+        self.checkPoint = checkPoint
 
     def _run_with_splitted_lambdas(self, alchemicalTemplateCreator):
         c_lambdas = self.settings.c_lambdas
