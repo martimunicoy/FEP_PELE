@@ -45,7 +45,7 @@ class DoubleWideSampling(Command):
         self._name = co.COMMAND_NAMES_DICT["DOUBLE_WIDE_SAMPLING"]
         Command.__init__(self, settings)
         self.directions = co.DOUBLE_WIDE_SAMPLING_DIRECTIONS
-        
+
     @property
     def name(self):
         return self._name
