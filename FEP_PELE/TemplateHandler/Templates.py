@@ -344,35 +344,35 @@ class TemplateOPLS2005:
     def get_list_of_fragment_atoms(self):
         atoms = []
         for key, atom in self.list_of_atoms.items():
-            if atom.is_fragment:
+            if atom.is_unique:
                 atoms.append((key, atom))
         return atoms
 
     def get_list_of_fragment_bonds(self):
         bonds = []
         for key, bond in self.list_of_bonds.items():
-            if bond.is_fragment:
+            if bond.is_unique:
                 bonds.append((key, bond))
         return bonds
 
     def get_list_of_fragment_thetas(self):
         thetas = []
         for key, theta in self.list_of_thetas.items():
-            if theta.is_fragment:
+            if theta.is_unique:
                 thetas.append((key, theta))
         return thetas
 
     def get_list_of_fragment_phis(self):
         phis = []
         for phi in self.list_of_phis:
-            if phi.is_fragment:
+            if phi.is_unique:
                 phis.append(phi)
         return phis
 
     def get_list_of_fragment_iphis(self):
         iphis = []
         for iphi in self.list_of_iphis:
-            if iphi.is_fragment:
+            if iphi.is_unique:
                 iphis.append(iphi)
         return iphis
 
@@ -381,7 +381,7 @@ class TemplateOPLS2005:
             if atom.pdb_atom_name == atom_name:
                 return atom
         else:
-            raise NameError("PDB atom name {}".foramt(atom_name) +
+            raise NameError("PDB atom name {}".format(atom_name) +
                             "not found in template " +
                             "{}".format(self.template_name))
 

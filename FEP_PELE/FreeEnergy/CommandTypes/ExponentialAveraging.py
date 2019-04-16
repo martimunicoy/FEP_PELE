@@ -10,6 +10,8 @@ from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.Utils.InOut import isThereAPath
 from FEP_PELE.FreeEnergy import Calculators
 
+from FEP_PELE.TemplateHandler import Lambda
+
 # Script information
 __author__ = "Marti Municoy"
 __license__ = "GPL"
@@ -36,7 +38,15 @@ class ExponentialAveraging(Command):
                   "command. Check your parameters.")
             sys.exit(1)
 
-        lambda_folders = self._getLambdaFolders(path)
+        if (self.settings.splitted_lambdas):
+            lambda_folders = self._getLambdaFolders(path + '?_' +
+                                                    Lambda.STERIC_LAMBDA +
+                                                    '/')
+            lambda_folders += self._getLambdaFolders(path + '?_' +
+                                                     Lambda.COULOMBIC_LAMBDA +
+                                                     '/')
+        else:
+            lambda_folders = self._getLambdaFolders(path)
 
         results = []
 

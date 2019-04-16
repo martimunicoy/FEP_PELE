@@ -9,7 +9,7 @@ class Atom:
     def __init__(self, atom_id, parent_id, location, atom_type, pdb_atom_name,
                  unknown, x_zmatrix=0, y_zmatrix=0, z_zmatrix=0, sigma=0,
                  epsilon=0, charge=0, radnpSGB=0, radnpType=0, sgbnpGamma=0,
-                 sgbnpType=0, is_linker=False, is_fragment=False):
+                 sgbnpType=0, is_linker=False, is_unique=False):
         self.atom_id = int(atom_id)
         self.parent_id = int(parent_id)
         self.location = str(location)
@@ -30,7 +30,7 @@ class Atom:
         self.thetas = []
         self.phis = []
         self.iphis = []
-        self.is_fragment = bool(is_fragment)
+        self.is_unique = bool(is_unique)
         self.is_linker = bool(is_linker)
 
     def write_resx(self):
@@ -49,13 +49,13 @@ class Atom:
 
 
 class Bond:
-    def __init__(self, atom1, atom2, spring, eq_dist, is_fragment=False,
+    def __init__(self, atom1, atom2, spring, eq_dist, is_unique=False,
                  is_linker=False):
         self.atom1 = int(atom1)
         self.atom2 = int(atom2)
         self.spring = float(spring)
         self.eq_dist = float(eq_dist)
-        self.is_fragment = bool(is_fragment)
+        self.is_unique = bool(is_unique)
         self.is_linker = bool(is_linker)
 
     def write_bond(self):
@@ -65,13 +65,13 @@ class Bond:
 
 class Theta:
     def __init__(self, atom1, atom2, atom3, spring, eq_angle,
-                 is_fragment=False):
+                 is_unique=False):
         self.atom1 = int(atom1)
         self.atom2 = int(atom2)
         self.atom3 = int(atom3)
         self.spring = float(spring)
         self.eq_angle = float(eq_angle)
-        self.is_fragment = bool(is_fragment)
+        self.is_unique = bool(is_unique)
 
     def write_theta(self):
         return PATTERN_OPLS2005_THETA.format(self.atom1, self.atom2,
@@ -81,7 +81,7 @@ class Theta:
 
 class Phi:
     def __init__(self, atom1, atom2, atom3, atom4, constant, prefactor, nterm,
-                 improper, is_fragment=False):
+                 improper, is_unique=False):
         self.atom1 = int(atom1)
         self.atom2 = int(atom2)
         self.atom3 = int(atom3)
@@ -90,7 +90,7 @@ class Phi:
         self.prefactor = float(prefactor)
         self.nterm = float(nterm)
         self.improper = bool(improper)
-        self.is_fragment = bool(is_fragment)
+        self.is_unique = bool(is_unique)
 
     def write_phi(self):
         if not self.improper:

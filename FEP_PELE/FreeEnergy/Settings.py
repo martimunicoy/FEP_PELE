@@ -36,6 +36,8 @@ class Settings(object):
         self.__final_template = co.DEF_FINAL_TEMPLATE
         self.__atom_links = co.DEF_ATOM_LINKS
         self.__lambdas = co.DEF_LAMBDAS
+        self.__lj_lambdas = co.DEF_LJ_LAMBDAS
+        self.__c_lambdas = co.DEF_C_LAMBDAS
         self.__number_of_processors = co.DEF_NUMBER_OF_PROCESSORDS
         self.__commands = co.DEF_COMMANDS
         self.__min_control_file = co.DEF_MIN_CONTROL_FILE
@@ -50,10 +52,10 @@ class Settings(object):
         self.__initial_ligand_pdb = co.DEF_INITIAL_LIGAND_PDB
         self.__final_ligand_pdb = co.DEF_FINAL_LIGAND_PDB
         self.__solvent_type = co.DEF_SOLVENT_TYPE
+        self.__splitted_lambdas = co.DEF_LAMBDA_SPLITTING
 
         # Other
         self.__default_lambdas = True
-        self.__splitted_lennardjones_and_coulomb = False
 
     @property
     def general_path(self):
@@ -81,7 +83,15 @@ class Settings(object):
 
     @property
     def lambdas(self):
-        return sorted(self.__lambdas)
+        return self.__lambdas
+
+    @property
+    def lj_lambdas(self):
+        return self.__lj_lambdas
+
+    @property
+    def c_lambdas(self):
+        return self.__c_lambdas
 
     @property
     def number_of_processors(self):
@@ -110,6 +120,10 @@ class Settings(object):
     @property
     def safety_check(self):
         return self.__safety_check
+
+    @property
+    def initial_template_name(self):
+        return getFileFromPath(self.__initial_template)
 
     @property
     def final_template_name(self):
@@ -155,6 +169,10 @@ class Settings(object):
     def solvent_type(self):
         return self.__solvent_type
 
+    @property
+    def splitted_lambdas(self):
+        return self.__splitted_lambdas
+
     def set(self, key, value):
         if (key == co.CONTROL_FILE_DICT["GENERAL_PATH"]):
             value = self._getSingleValue(key, value)
@@ -189,12 +207,50 @@ class Settings(object):
             value = self._getCommaSeparatedList(key, value)
             self._checkListOfLambdas(key, value)
             if (self.__default_lambdas):
-                self.__lambdas = set()
+                self.__lambdas = []
                 self.__default_lambdas = False
 
             for lambda_chunk in value:
                 for lambda_value in lambda_chunk.split(','):
-                    self.__lambdas.add(float(lambda_value))
+                    self.__lambdas.append(float(lambda_value))
+
+            # Lambdas must be sorted
+            if (self.__lambdas != sorted(self.__lambdas, reverse=False) and
+                    self.__lambdas != sorted(self.__lambdas, reverse=True)):
+                print("Error while setting lambdas. They are not sorted.")
+                exit(1)
+
+        elif (key == co.CONTROL_FILE_DICT["LJ_LAMBDAS"]):
+            self.__splitted_lambdas = True
+
+            value = self._getCommaSeparatedList(key, value)
+            self._checkListOfLambdas(key, value)
+
+            for lambda_chunk in value:
+                for lambda_value in lambda_chunk.split(','):
+                    self.__lj_lambdas.append(float(lambda_value))
+
+            # Lambdas must be sorted
+            if (self.__lj_lambdas != sorted(self.__lj_lambdas)):
+                print("Error while setting Lennard-Jones lambdas. " +
+                      "They are not sorted in ascending order.")
+                exit(1)
+
+        elif (key == co.CONTROL_FILE_DICT["C_LAMBDAS"]):
+            self.__splitted_lambdas = True
+
+            value = self._getCommaSeparatedList(key, value)
+            self._checkListOfLambdas(key, value)
+
+            for lambda_chunk in value:
+                for lambda_value in lambda_chunk.split(','):
+                    self.__c_lambdas.append(float(lambda_value))
+
+            # Lambdas must be sorted
+            if (self.__c_lambdas != sorted(self.__c_lambdas)):
+                print("Error while setting coulombic lambdas. " +
+                      "They are not sorted in ascending order.")
+                exit(1)
 
         elif (key == co.CONTROL_FILE_DICT["NUMBER_OF_PROCESSORS"]):
             value = self._getSingleValue(key, value)

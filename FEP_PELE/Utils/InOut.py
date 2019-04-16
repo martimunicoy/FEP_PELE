@@ -178,11 +178,9 @@ def remove_splitted_models(path, trajectory_name):
         os.remove(model)
 
 
-def writeLambdaTitle(lambda_value):
-    title = "Lambda: {}".format(lambda_value)
-
+def writeLambdaTitle(lambda_object):
     print()
-    print(title)
-    for i in range(0, len(title)):
+    print(lambda_object)
+    for i in range(0, len(str(lambda_object))):
         print('-', end='')
     print()

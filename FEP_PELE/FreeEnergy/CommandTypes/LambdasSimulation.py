@@ -10,16 +10,15 @@ import random
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.FreeEnergy import Constants as co
 
+from FEP_PELE.TemplateHandler import Lambda
 from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
     AlchemicalTemplateCreator
 
 from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import full_clear_directory
-from FEP_PELE.Utils.InOut import write_lambda_value_to_control_file
 from FEP_PELE.Utils.InOut import getFileFromPath
 from FEP_PELE.Utils.InOut import writeLambdaTitle
 
-from FEP_PELE.PELETools import PELEConstants as pele_co
 from FEP_PELE.PELETools.PELERunner import PELERunner
 from FEP_PELE.PELETools.ControlFileCreator import \
     ControlFileFromTemplateCreator
@@ -54,16 +53,21 @@ class LambdasSimulation(Command):
         full_clear_directory(self.settings.calculation_path)
         full_clear_directory(self.settings.minimization_path)
 
-        for lambda_value in self.settings.lambdas:
-            writeLambdaTitle(lambda_value)
+        if (self.settings.splitted_lambdas):
+            self._run_with_splitted_lambdas(alchemicalTemplateCreator)
+        else:
+            self._run(alchemicalTemplateCreator, self.settings.lambdas,
+                      Lambda.DUAL_LAMBDA)
+
+    def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
+             constant_lambda=None):
+        for lambda_ in Lambda.IterateOverLambdas(lambdas, lambdas_type):
+            writeLambdaTitle(lambda_)
 
             print(" - Creating alchemical template")
 
-            alchemicalTemplateCreator.create(
-                lambda_value,
-                self.settings.general_path +
-                pele_co.HETEROATOMS_TEMPLATE_PATH +
-                self.settings.final_template_name)
+            self._createAlchemicalTemplate(alchemicalTemplateCreator,
+                                           lambda_, constant_lambda)
 
             print("   Done")
 
@@ -75,7 +79,7 @@ class LambdasSimulation(Command):
 
             print("  - Simulation")
 
-            self._simulate(lambda_value)
+            self._simulate(lambda_, num)
 
             print("   Done")
 
@@ -96,8 +100,11 @@ class LambdasSimulation(Command):
             print("LambdasSimulation error: \n" + str(exception))
             sys.exit(1)
 
-    def _simulate(self, lambda_value):
-        path = self.settings.simulation_path + str(lambda_value) + "/"
+    def _simulate(self, lambda_, num):
+        path = self.settings.simulation_path
+        if (lambda_.type != Lambda.DUAL_LAMBDA):
+            path += str(num) + '_' + lambda_.type + "/"
+        path += str(lambda_.value) + "/"
 
         control_file_name = getFileFromPath(self.settings.sim_control_file)
 

@@ -12,6 +12,7 @@ from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.FreeEnergy.Checkers import checkModelCoords
 
+from FEP_PELE.TemplateHandler import Lambda
 from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
     AlchemicalTemplateCreator
 
@@ -56,14 +57,26 @@ class DoubleWideSampling(Command):
 
         clear_directory(self.settings.calculation_path)
 
-        for i, lambda_value in enumerate(self.settings.lambdas):
-            writeLambdaTitle(lambda_value)
+        if (self.settings.splitted_lambdas):
+            self._run_with_splitted_lambdas(alchemicalTemplateCreator)
+        else:
+            self._run(alchemicalTemplateCreator, self.settings.lambdas,
+                      Lambda.DUAL_LAMBDA)
+
+    def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
+             constant_lambda=None):
+        for lambda_ in Lambda.IterateOverLambdas(lambdas, lambdas_type):
+            writeLambdaTitle(lambda_)
 
             clear_directory(self.settings.calculation_path + co.MODELS_FOLDER)
 
+            path = self.settings.simulation_path
+            if (lambda_.type != Lambda.DUAL_LAMBDA):
+                path += str(num) + '_' + lambda_.type + "/"
+            path += str(lambda_.value) + "/"
+
             print(" - Splitting PELE models")
-            simulation = Simulation(self.settings.simulation_path +
-                                    str(lambda_value), sim_type="PELE",
+            simulation = Simulation(path, sim_type="PELE",
                                     report_name="report_",
                                     trajectory_name="trajectory_",
                                     logfile_name="logFile_")
@@ -90,7 +103,7 @@ class DoubleWideSampling(Command):
 
             # ---------------------------------------------------------------------
 
-            delta_lambda = self._get_delta_lambda(i)
+            delta_lambda = lambda_.get_delta()
 
             for direction in self.directions:
                 dir_factor = co.DIRECTION_FACTORS[direction]
@@ -98,11 +111,12 @@ class DoubleWideSampling(Command):
                 print("  - Applying delta lambda " +
                       str(dir_factor * delta_lambda))
 
-                alchemicalTemplateCreator.create(
-                    lambda_value + dir_factor * delta_lambda,
-                    self.settings.general_path +
-                    pele_co.HETEROATOMS_TEMPLATE_PATH +
-                    self.settings.final_template_name)
+                value = lambda_.value + dir_factor * delta_lambda
+                shifted_lambda = Lambda.Lambda(value, lambda_type=lambda_.type)
+
+                self._createAlchemicalTemplate(alchemicalTemplateCreator,
+                                               shifted_lambda, constant_lambda)
+
                 print("   Done")
 
                 # -----------------------------------------------------------------
@@ -110,8 +124,7 @@ class DoubleWideSampling(Command):
                 print(" - Minimizing and calculating energetic differences")
 
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       lambda_value,
-                                       co.DIRECTION_TO_CHAR[direction])
+                                       lambda_, direction, num)
 
                 with Pool(self.settings.number_of_processors) as pool:
                     pool.map(parallelLoop, simulation.iterateOverReports)
@@ -142,12 +155,16 @@ class DoubleWideSampling(Command):
 
         return models_to_discard
 
-    def _parallelPELEMinimizerLoop(self, lambda_value, direction_char,
+    def _parallelPELEMinimizerLoop(self, lambda_, direction, num,
                                    report_file):
 
-        lambda_value = str(round(lambda_value, 3)) + direction_char
+        lambda_value = str(round(lambda_.value, 3)) + \
+            co.DIRECTION_TO_CHAR[direction]
 
-        dir_name = self.settings.calculation_path + lambda_value + "/"
+        dir_name = self.settings.calculation_path
+        if (lambda_.type != Lambda.DUAL_LAMBDA):
+            dir_name += str(num) + '_' + lambda_.type + "/"
+        dir_name += lambda_value + "/"
 
         create_directory(dir_name)
 
@@ -165,8 +182,11 @@ class DoubleWideSampling(Command):
             logfile_name = self.settings.calculation_path \
                 + co.LOGFILE_NAME.format(pid)
 
-            trajectory_name = self.settings.calculation_path + lambda_value + \
-                "/" + str(model_id) + '-' + report_file.trajectory.name
+            trajectory_name = self.settings.calculation_path
+            if (lambda_.type != Lambda.DUAL_LAMBDA):
+                trajectory_name += str(num) + '_' + lambda_.type + "/"
+            trajectory_name += lambda_value + "/" + \
+                str(model_id) + '-' + report_file.trajectory.name
 
             runner = PELERunner(self.settings.serial_pele,
                                 number_of_processors=1)
@@ -217,7 +237,10 @@ class DoubleWideSampling(Command):
                 print("Error: energy calculation failed")
                 print(output)
 
-        path = self.settings.calculation_path + lambda_value + "/"
+        path = self.settings.calculation_path
+        if (lambda_.type != Lambda.DUAL_LAMBDA):
+            path += str(num) + '_' + lambda_.type + "/"
+        path += lambda_value + "/"
 
         # Write trajectories and reports
         write_energies_report(path, report_file, energies)
