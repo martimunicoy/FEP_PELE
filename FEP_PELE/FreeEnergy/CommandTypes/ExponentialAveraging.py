@@ -62,7 +62,7 @@ class ExponentialAveraging(Command):
             lamda_average = Calculators.calculateThermodynamicAverage(energies)
             lambda_energy = Calculators.zwanzigEquation(lamda_average)
             print(lambda_folder.lambda_value, lambda_energy)
-            result += Calculators.zwanzigEquation(lambda_energy)
+            result += lambda_energy
 
         print(" - Relative Free Energy prediction " +
               "{:.2f} kcal/mol".format(result))
