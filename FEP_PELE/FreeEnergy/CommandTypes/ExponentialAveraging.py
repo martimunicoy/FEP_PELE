@@ -61,6 +61,7 @@ class ExponentialAveraging(Command):
             energies = lambda_folder.getDeltaEnergyValues()
             lamda_average = Calculators.calculateThermodynamicAverage(energies)
             lambda_energy = Calculators.zwanzigEquation(lamda_average)
+            lambda_energy *= lambda_folder.direction_factor
             print(lambda_folder.lambda_value, lambda_energy)
             result += lambda_energy
 

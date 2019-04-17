@@ -82,4 +82,4 @@ class LambdaFolder(object):
 
             energies += report.getMetric(co.PP_DELTA_ENERGIES_CO)
 
-        return [i * self.direction_factor for i in energies]
+        return energies
