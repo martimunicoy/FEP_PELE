@@ -128,8 +128,12 @@ class DoubleWideSampling(Command):
 
                 print(" - Minimizing and calculating energetic differences")
 
+                atoms_to_minimize = self._getAtomsToMinimize(
+                    alchemicalTemplateCreator)
+
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       lambda_, direction, num)
+                                       lambda_, atoms_to_minimize, direction,
+                                       num)
 
                 with Pool(self.settings.number_of_processors) as pool:
                     pool.map(parallelLoop, simulation.iterateOverReports)
@@ -160,8 +164,8 @@ class DoubleWideSampling(Command):
 
         return models_to_discard
 
-    def _parallelPELEMinimizerLoop(self, lambda_, direction, num,
-                                   report_file):
+    def _parallelPELEMinimizerLoop(self, lambda_, atoms_to_minimize, direction,
+                                   num, report_file):
 
         lambda_value = str(round(lambda_.value, 3)) + \
             co.DIRECTION_TO_CHAR[direction]
@@ -208,6 +212,7 @@ class DoubleWideSampling(Command):
                     pdb_name,
                     logfile_name,
                     trajectory_name,
+                    atoms_to_minimize,
                     self.settings.calculation_path +
                     co.SINGLE_POINT_CF_NAME.format(pid))
 
@@ -224,6 +229,7 @@ class DoubleWideSampling(Command):
                     pdb_name,
                     logfile_name,
                     trajectory_name,
+                    atoms_to_minimize,
                     self.settings.calculation_path +
                     co.POST_PROCESSING_CF_NAME.format(pid))
 
@@ -254,14 +260,26 @@ class DoubleWideSampling(Command):
         # Clean temporal files
         remove_splitted_models(path, report_file.trajectory.name)
 
+    def __getAtomsToMinimize(self, alchemicalTemplateCreator):
+        atoms_to_minimize = list(self.settings.atom_links)
+
+        fragment_atoms = alchemicalTemplateCreator.getFragmentAtoms()
+
+        for fragment_atom in fragment_atoms:
+            atoms_to_minimize.append(fragment_atom.pdb_atom_name)
+
+        return atoms_to_minimize
+
     def _writeRecalculationControlFile(self, template_path, pdb_name,
                                        logfile_name,
-                                       trajectory_name, output_path):
+                                       trajectory_name, atoms_to_minimize,
+                                       output_path):
         cf_creator = ControlFileFromTemplateCreator(template_path)
 
         cf_creator.replaceFlag("INPUT_PDB_NAME", pdb_name)
         cf_creator.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
         cf_creator.replaceFlag("LOG_PATH", logfile_name)
         cf_creator.replaceFlag("TRAJECTORY_PATH", trajectory_name)
+        cf_creator.replaceFlas("ATOMS_TO_MINIMIZE", atoms_to_minimize)
 
         cf_creator.write(output_path)

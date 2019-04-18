@@ -14,7 +14,7 @@ __author__ = "Marti Municoy"
 __license__ = "GPL"
 __version__ = "1.0.1"
 __maintainer__ = "Marti Municoy"
-__email__ = "marti.municoy@bsc."
+__email__ = "marti.municoy@bsc.es"
 
 
 def calculateThermodynamicAverage(energies, temperature=300):
@@ -22,7 +22,7 @@ def calculateThermodynamicAverage(energies, temperature=300):
     beta = float(1 / co.BOLTZMANN_CONSTANT_IN_KCAL_MOL / temperature)
 
     for energy in energies:
-        result += math.exp(-energy * beta)
+        result += math.exp(- energy * beta)
 
     result /= len(energies)
 
