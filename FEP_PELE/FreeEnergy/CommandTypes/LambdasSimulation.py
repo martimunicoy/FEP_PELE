@@ -101,6 +101,8 @@ class LambdasSimulation(Command):
             self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
                                   str(lambda_.value)))
 
+        return []
+
     def _minimize(self):
         path = self.settings.minimization_path
 

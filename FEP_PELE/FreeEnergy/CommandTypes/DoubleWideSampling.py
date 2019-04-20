@@ -114,7 +114,7 @@ class DoubleWideSampling(Command):
                 dir_factor = co.DIRECTION_FACTORS[direction]
                 print(" - Creating alchemical template")
                 print("  - Applying delta lambda " +
-                      str(dir_factor * delta_lambda))
+                      str(round(dir_factor * delta_lambda, 3)))
 
                 value = lambda_.value + dir_factor * delta_lambda
                 shifted_lambda = Lambda.Lambda(value, lambda_type=lambda_.type)
@@ -128,7 +128,7 @@ class DoubleWideSampling(Command):
 
                 print(" - Minimizing and calculating energetic differences")
 
-                atoms_to_minimize = self._getAtomsToMinimize(
+                atoms_to_minimize = self._getAtomIdsToMinimize(
                     alchemicalTemplateCreator)
 
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
@@ -141,6 +141,8 @@ class DoubleWideSampling(Command):
                 print("   Done")
 
         clear_directory(self.settings.calculation_path)
+
+        return []
 
     def _parallelTrajectoryWriterLoop(self, alchemicalTemplateCreator,
                                       report_file):
@@ -255,31 +257,22 @@ class DoubleWideSampling(Command):
 
         # Write trajectories and reports
         write_energies_report(path, report_file, energies)
-        join_splitted_models(path, report_file.trajectory.name)
+        join_splitted_models(path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
-        remove_splitted_models(path, report_file.trajectory.name)
-
-    def __getAtomsToMinimize(self, alchemicalTemplateCreator):
-        atoms_to_minimize = list(self.settings.atom_links)
-
-        fragment_atoms = alchemicalTemplateCreator.getFragmentAtoms()
-
-        for fragment_atom in fragment_atoms:
-            atoms_to_minimize.append(fragment_atom.pdb_atom_name)
-
-        return atoms_to_minimize
+        remove_splitted_models(path, "*-" + report_file.trajectory.name)
 
     def _writeRecalculationControlFile(self, template_path, pdb_name,
                                        logfile_name,
                                        trajectory_name, atoms_to_minimize,
                                        output_path):
-        cf_creator = ControlFileFromTemplateCreator(template_path)
+        builder = ControlFileFromTemplateCreator(template_path)
 
-        cf_creator.replaceFlag("INPUT_PDB_NAME", pdb_name)
-        cf_creator.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
-        cf_creator.replaceFlag("LOG_PATH", logfile_name)
-        cf_creator.replaceFlag("TRAJECTORY_PATH", trajectory_name)
-        cf_creator.replaceFlas("ATOMS_TO_MINIMIZE", atoms_to_minimize)
+        builder.replaceFlag("INPUT_PDB_NAME", pdb_name)
+        builder.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
+        builder.replaceFlag("LOG_PATH", logfile_name)
+        builder.replaceFlag("TRAJECTORY_PATH", trajectory_name)
+        builder.replaceFlag("ATOMS_TO_MINIMIZE",
+                            "\"" + '\", \"'.join(atoms_to_minimize) + "\"")
 
-        cf_creator.write(output_path)
+        builder.write(output_path)

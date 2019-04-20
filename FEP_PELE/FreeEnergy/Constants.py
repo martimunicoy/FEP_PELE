@@ -104,6 +104,7 @@ CONTROL_FILE_DICT = {
 COMMAND_NAMES_LIST = [
     # Lambda Simulation-related commands
     "LambdaSimulation",
+    "UnboundLambdaSimulation",
     # Samping-related commands
     "DoubleWideSampling",
     # Free Energy calculation-related commands
@@ -114,18 +115,19 @@ COMMAND_NAMES_LIST = [
 COMMAND_NAMES_DICT = {
     # Lambda Simulation-related commands
     "LAMBDA_SIMULATION": COMMAND_NAMES_LIST[0],
+    "UNBOUND_LAMBDA_SIMULATION": COMMAND_NAMES_LIST[1],
     # Samping-related commands
-    "DOUBLE_WIDE_SAMPLING": COMMAND_NAMES_LIST[1],
+    "DOUBLE_WIDE_SAMPLING": COMMAND_NAMES_LIST[2],
     # Free Energy calculation-related commands
-    "EXPONENTIAL_AVERAGING": COMMAND_NAMES_LIST[2],
-    "SOLVATION_FREE_ENERGY_CALCULATION": COMMAND_NAMES_LIST[3]}
+    "EXPONENTIAL_AVERAGING": COMMAND_NAMES_LIST[3],
+    "SOLVATION_FREE_ENERGY_CALCULATION": COMMAND_NAMES_LIST[4]}
 
 # Folder names
 MODELS_FOLDER = "models/"
 
 # File names
 LOGFILE_NAME = "logfile_{}.txt"
-PDB_OUT_NAME = "pele_out.pdb"
+PDB_OUT_NAME = "pele_out_{}.pdb"
 SINGLE_POINT_CF_NAME = "pele_sp_{}.conf"
 POST_PROCESSING_CF_NAME = "pele_recal_{}.conf"
 MINIMIZATION_CF_NAME = "pele_min.conf"

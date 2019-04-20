@@ -2,11 +2,12 @@
 
 
 # FEP_PELE imports
-from . import Constants as co
+from .Constants import COMMAND_NAMES_DICT
 
 
 # Python imports
 from .CommandTypes.LambdasSimulation import LambdasSimulation
+from .CommandTypes.UnboundLambdaSimulation import UnboundLambdaSimulation
 from .CommandTypes.DoubleWideSampling import DoubleWideSampling
 from .CommandTypes.ExponentialAveraging import ExponentialAveraging
 from .CommandTypes.SolvationFreeEnergyCalculation \
@@ -35,13 +36,15 @@ class CommandsBuilder(object):
         return commands
 
     def getCommandFromName(self, command_name):
-        if (command_name == co.COMMAND_NAMES_DICT["LAMBDA_SIMULATION"]):
+        if (command_name == COMMAND_NAMES_DICT["LAMBDA_SIMULATION"]):
             return LambdasSimulation(self.settings)
-        elif (command_name == co.COMMAND_NAMES_DICT["DOUBLE_WIDE_SAMPLING"]):
+        if (command_name == COMMAND_NAMES_DICT["UNBOUND_LAMBDA_SIMULATION"]):
+            return UnboundLambdaSimulation(self.settings)
+        elif (command_name == COMMAND_NAMES_DICT["DOUBLE_WIDE_SAMPLING"]):
             return DoubleWideSampling(self.settings)
-        elif (command_name == co.COMMAND_NAMES_DICT["EXPONENTIAL_AVERAGING"]):
+        elif (command_name == COMMAND_NAMES_DICT["EXPONENTIAL_AVERAGING"]):
             return ExponentialAveraging(self.settings)
-        elif (command_name == co.COMMAND_NAMES_DICT[
+        elif (command_name == COMMAND_NAMES_DICT[
                 "SOLVATION_FREE_ENERGY_CALCULATION"]):
             return SolvationFreeEnergyCalculation(self.settings)
         else:

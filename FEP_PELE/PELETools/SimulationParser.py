@@ -341,7 +341,7 @@ class Trajectory:
                 current_line = i - (self.PDBHandler.system_size + 1) * model
 
                 if (current_line == atom_line):
-                    list_of_atoms.append(atomBuilder(line, self, model))
+                    list_of_atoms.append(atomBuilder(line))
 
         return list_of_atoms
 
@@ -359,7 +359,7 @@ class Trajectory:
                     continue
 
                 if containsAtom(line, atom_data):
-                    list_of_atoms.append(atomBuilder(line, self, 1))
+                    list_of_atoms.append(atomBuilder(line))
 
         return list_of_atoms
 
@@ -407,7 +407,7 @@ class Trajectory:
                 current_line = i - (self.PDBHandler.system_size + 1) * model
 
                 if (current_line in lines):
-                    list_of_atoms.append(atomBuilder(line, self, model))
+                    list_of_atoms.append(atomBuilder(line))
 
         links_list.append(linkBuilder(list_of_atoms))
 
@@ -430,7 +430,7 @@ class Trajectory:
                     continue
 
                 if containsLink(line, link_data):
-                    atom = atomBuilder(line, self, 1)
+                    atom = atomBuilder(line)
                     list_of_atoms.append(atom)
 
         links_list.append(linkBuilder(list_of_atoms))
