@@ -30,7 +30,8 @@ class DoubleWideSampling(SamplingMethod):
         if (previous_lambda is None):
             shifted_value = float(0.0)
         else:
-            shifted_value = float((lambda_.value - previous_lambda.value) /
+            shifted_value = float(lambda_.value -
+                                  (lambda_.value - previous_lambda.value) /
                                   2.0)
 
         shifted_lambdas.append(Lambda.Lambda(shifted_value,
@@ -40,7 +41,8 @@ class DoubleWideSampling(SamplingMethod):
         if (next_lambda is None):
             shifted_value = float(1.0)
         else:
-            shifted_value = float((next_lambda.value - lambda_.value) /
+            shifted_value = float(lambda_.value +
+                                  (next_lambda.value - lambda_.value) /
                                   2.0)
 
         shifted_lambdas.append(Lambda.Lambda(shifted_value,

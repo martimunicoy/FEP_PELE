@@ -127,19 +127,19 @@ COMMAND_LABELS_DICT = {
 SAMPLING_METHODS_LIST = [
     "DoubleWide",
     "Overlap",
-    "DoubleEnd"]
+    "DoubleEnded"]
 
 # Dictionary of sampling methods names
 SAMPLING_METHODS_DICT = {
     "DOUBLE_WIDE": SAMPLING_METHODS_LIST[0],
     "OVERLAP": SAMPLING_METHODS_LIST[1],
-    "DOUBLE_END": SAMPLING_METHODS_LIST[2]}
+    "DOUBLE_ENDED": SAMPLING_METHODS_LIST[2]}
 
 # Dictionary of sampling methods labels
 SAMPLING_METHODS_NAMES = {
     "DOUBLE_WIDE": "double-wide sampling [0 <-- M --> 1]",
     "OVERLAP": "overlap sampling [0 --> M <-- 1]",
-    "DOUBLE_END": "double-end sampling [0 <--> 1]"}
+    "DOUBLE_ENDED": "double-ended sampling [0 <--> 1]"}
 
 # Default settings
 DEF_SERIAL_PELE = ""

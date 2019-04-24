@@ -100,7 +100,7 @@ class Command(object):
         if ((self.settings.sampling_method ==
              co.SAMPLING_METHODS_DICT["OVERLAP"]) or
             (self.settings.sampling_method ==
-             co.SAMPLING_METHODS_DICT["DOUBLE_END"])):
+             co.SAMPLING_METHODS_DICT["DOUBLE_ENDED"])):
             self._lambdasCheckUpWithEdges(lambdas, num)
         else:
             self._lambdasCheckUpWithoutEdges(lambdas, num)
