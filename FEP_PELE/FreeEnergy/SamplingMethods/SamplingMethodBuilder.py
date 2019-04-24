@@ -3,6 +3,7 @@
 
 # Python imports
 from .DoubleWideSampling import DoubleWideSampling
+from .DoubleEndedSampling import DoubleEndedSampling
 from FEP_PELE.FreeEnergy.Constants import SAMPLING_METHODS_DICT as methods_dict
 
 
@@ -22,6 +23,8 @@ class SamplingMethodBuilder(object):
     def createSamplingMethod(self):
         if (self.sampling_method_name == methods_dict["DOUBLE_WIDE"]):
             return DoubleWideSampling(self.settings)
+        if (self.sampling_method_name == methods_dict["DOUBLE_ENDED"]):
+            return DoubleEndedSampling(self.settings)
         else:
             print("Sampling method name {} not recogniced".format(
                 self.sampling_method_name))

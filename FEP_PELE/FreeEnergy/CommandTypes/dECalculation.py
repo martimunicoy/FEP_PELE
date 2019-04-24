@@ -85,7 +85,9 @@ class dECalculation(Command):
     def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
              constant_lambda=None):
 
-        for lambda_ in Lambda.IterateOverLambdas(lambdas, lambdas_type):
+        lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
+
+        for lambda_ in lambdas:
             if (self.checkPoint.check((self.name, str(num) +
                                        str(lambda_.type) +
                                        str(lambda_.value)))):

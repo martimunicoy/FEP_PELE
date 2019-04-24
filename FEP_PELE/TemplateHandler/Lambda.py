@@ -79,24 +79,16 @@ class Lambda(object):
             return abs(self.value - self.previous_lambda.value) / 2.
 
 
-class IterateOverLambdas(object):
-    def __init__(self, lambdas, lambda_type=DUAL_LAMBDA):
-        self._lambdas = lambdas
-        self._lambda_type = lambda_type
-        self._current = 0
-        self._previous_lambda = None
+class LambdasBuilder(object):
+    def build(self, lambda_values, lambda_type=DUAL_LAMBDA):
+        lambdas = []
+        previous_lambda = None
 
-    def __iter__(self):
-        return self
+        for index, lambda_value in enumerate(lambda_values):
+            new_lambda = Lambda(lambda_value, index,
+                                previous_lambda=previous_lambda,
+                                lambda_type=lambda_type)
+            lambdas.append(new_lambda)
+            previous_lambda = new_lambda
 
-    def __next__(self):
-        if (self._current == len(self._lambdas)):
-            raise StopIteration
-        else:
-            self._current += 1
-            new_lambda = Lambda(self._lambdas[self._current - 1],
-                                self._current - 1,
-                                previous_lambda=self._previous_lambda,
-                                lambda_type=self._lambda_type)
-            self._previous_lambda = new_lambda
-            return new_lambda
+        return lambdas

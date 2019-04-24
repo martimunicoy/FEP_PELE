@@ -29,13 +29,15 @@ class DoubleEndedSampling(SamplingMethod):
         previous_lambda = lambda_.previous_lambda
         if (previous_lambda is not None):
             shifted_lambdas.append(Lambda.Lambda(
-                float(lambda_.value - previous_lambda.value),
+                float(lambda_.value -
+                      (lambda_.value - previous_lambda.value)),
                 lambda_type=lambda_.type))
 
         next_lambda = lambda_.next_lambda
         if (next_lambda is not None):
             shifted_lambdas.append(Lambda.Lambda(
-                float(next_lambda.value - lambda_.value),
+                float(lambda_.value +
+                      (next_lambda.value - lambda_.value)),
                 lambda_type=lambda_.type))
 
         return shifted_lambdas

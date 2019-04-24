@@ -95,7 +95,9 @@ class UnbounddECalculation(Command):
         runner = PELERunner(self.settings.serial_pele,
                             number_of_processors=1)
 
-        for lambda_ in Lambda.IterateOverLambdas(lambdas, lambdas_type):
+        lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
+
+        for lambda_ in lambdas:
             self._createAlchemicalTemplate(alchemicalTemplateCreator,
                                            lambda_, constant_lambda)
 

@@ -48,6 +48,8 @@ class Command(object):
 
         self.checkPoint = checkPoint
 
+        self.lambdasBuilder = Lambda.LambdasBuilder()
+
     def _run_with_splitted_lambdas(self, alchemicalTemplateCreator):
         output = []
 
