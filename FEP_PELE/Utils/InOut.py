@@ -161,20 +161,26 @@ def write_energies_report(output_path, report_file, energies):
 
 
 def join_splitted_models(path, trajectory_name):
-    with open(path + trajectory_name, 'w') as trajectory_file:
-        models = glob.glob(path + '*-' + trajectory_name)
+    with open(path + trajectory_name.replace('*', "all"), 'w') as f:
+        models = glob.glob(path + trajectory_name)
         models = natural_sort(models)
         for i, model in enumerate(models):
-            trajectory_file.write("MODEL " + str(i + 1) + '\n')
+            file_name = getFileFromPath(model)
+            if ("all" in file_name):
+                continue
+            f.write("MODEL " + str(i + 1) + '\n')
             with open(model) as model_file:
-                trajectory_file.writelines(model_file.readlines()[:-1])
-            trajectory_file.write("ENDMDL" + '\n')
+                f.writelines(model_file.readlines()[:-1])
+            f.write("ENDMDL" + '\n')
 
 
 def remove_splitted_models(path, trajectory_name):
-    models = glob.glob(path + '*-' + trajectory_name)
+    models = glob.glob(path + trajectory_name)
 
     for model in models:
+        file_name = getFileFromPath(model)
+        if ("all" in file_name):
+            continue
         os.remove(model)
 
 
@@ -184,3 +190,10 @@ def writeLambdaTitle(lambda_object):
     for i in range(0, len(str(lambda_object))):
         print('-', end='')
     print()
+
+
+def deleteAllFilesWithExtension(path, extension):
+    files = get_all_files_from_with_extension(path, extension)
+
+    for file in files:
+        os.remove(file)

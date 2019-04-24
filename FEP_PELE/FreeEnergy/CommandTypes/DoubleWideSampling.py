@@ -114,7 +114,7 @@ class DoubleWideSampling(Command):
                 dir_factor = co.DIRECTION_FACTORS[direction]
                 print(" - Creating alchemical template")
                 print("  - Applying delta lambda " +
-                      str(dir_factor * delta_lambda))
+                      str(round(dir_factor * delta_lambda, 3)))
 
                 value = lambda_.value + dir_factor * delta_lambda
                 shifted_lambda = Lambda.Lambda(value, lambda_type=lambda_.type)
@@ -128,8 +128,12 @@ class DoubleWideSampling(Command):
 
                 print(" - Minimizing and calculating energetic differences")
 
+                atoms_to_minimize = self._getAtomIdsToMinimize(
+                    alchemicalTemplateCreator)
+
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       lambda_, direction, num)
+                                       lambda_, atoms_to_minimize, direction,
+                                       num)
 
                 with Pool(self.settings.number_of_processors) as pool:
                     pool.map(parallelLoop, simulation.iterateOverReports)
@@ -160,8 +164,8 @@ class DoubleWideSampling(Command):
 
         return models_to_discard
 
-    def _parallelPELEMinimizerLoop(self, lambda_, direction, num,
-                                   report_file):
+    def _parallelPELEMinimizerLoop(self, lambda_, atoms_to_minimize, direction,
+                                   num, report_file):
 
         lambda_value = str(round(lambda_.value, 3)) + \
             co.DIRECTION_TO_CHAR[direction]
@@ -208,6 +212,7 @@ class DoubleWideSampling(Command):
                     pdb_name,
                     logfile_name,
                     trajectory_name,
+                    atoms_to_minimize,
                     self.settings.calculation_path +
                     co.SINGLE_POINT_CF_NAME.format(pid))
 
@@ -224,6 +229,7 @@ class DoubleWideSampling(Command):
                     pdb_name,
                     logfile_name,
                     trajectory_name,
+                    atoms_to_minimize,
                     self.settings.calculation_path +
                     co.POST_PROCESSING_CF_NAME.format(pid))
 
@@ -249,19 +255,22 @@ class DoubleWideSampling(Command):
 
         # Write trajectories and reports
         write_energies_report(path, report_file, energies)
-        join_splitted_models(path, report_file.trajectory.name)
+        join_splitted_models(path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
-        remove_splitted_models(path, report_file.trajectory.name)
+        remove_splitted_models(path, "*-" + report_file.trajectory.name)
 
     def _writeRecalculationControlFile(self, template_path, pdb_name,
                                        logfile_name,
-                                       trajectory_name, output_path):
-        cf_creator = ControlFileFromTemplateCreator(template_path)
+                                       trajectory_name, atoms_to_minimize,
+                                       output_path):
+        builder = ControlFileFromTemplateCreator(template_path)
 
-        cf_creator.replaceFlag("INPUT_PDB_NAME", pdb_name)
-        cf_creator.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
-        cf_creator.replaceFlag("LOG_PATH", logfile_name)
-        cf_creator.replaceFlag("TRAJECTORY_PATH", trajectory_name)
+        builder.replaceFlag("INPUT_PDB_NAME", pdb_name)
+        builder.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
+        builder.replaceFlag("LOG_PATH", logfile_name)
+        builder.replaceFlag("TRAJECTORY_PATH", trajectory_name)
+        builder.replaceFlag("ATOMS_TO_MINIMIZE",
+                            "\"" + '\", \"'.join(atoms_to_minimize) + "\"")
 
-        cf_creator.write(output_path)
+        builder.write(output_path)

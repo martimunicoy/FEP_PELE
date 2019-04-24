@@ -52,15 +52,19 @@ class AlchemicalTemplateCreator:
     def reset(self):
         self.alchemicalTemplate = self.explicit_template
 
-    def getFragmentAtomsAndBonds(self):
+    def getFragmentElements(self):
         fragment_atoms = detect_fragment_atoms(self.alchemicalTemplate,
                                                self.implicit_template)
 
         fragment_bonds = detect_fragment_bonds(fragment_atoms,
                                                self.alchemicalTemplate)
 
+        fragment_thetas = detect_fragment_thetas(fragment_atoms,
+                                                 self.alchemicalTemplate)
+
         set_fragment_atoms(list_of_fragment_atoms=fragment_atoms)
         set_fragment_bonds(list_of_fragment_bonds=fragment_bonds)
+        set_fragment_thetas(list_of_fragment_thetas=fragment_thetas)
 
         atoms_pairs = []
 
@@ -82,20 +86,38 @@ class AlchemicalTemplateCreator:
                                                     self.implicit_template,
                                                     self.alchemicalTemplate))
 
-        return atoms_pairs, bonds_pairs
+        thetas_pairs = []
+
+        for bonds_pair in bonds_pairs:
+            sub_thetas_pairs = set_connecting_thetas(bonds_pair,
+                                                     self.implicit_template,
+                                                     self.alchemicalTemplate)
+            for t1, t2 in sub_thetas_pairs:
+                thetas_pairs.append([t1, t2])
+
+        return atoms_pairs, bonds_pairs, thetas_pairs
 
     def applyLambda(self, _lambda):
-        atoms_pairs, bonds_pairs = self.getFragmentAtomsAndBonds()
+        atoms_pairs, bonds_pairs, thetas_pairs = self.getFragmentElements()
 
         combiner = CombineLinearly(self.alchemicalTemplate,
-                                   _lambda.value, atoms_pairs,
-                                   bonds_pairs, self.explicit_is_final)
+                                   _lambda.value, atoms_pairs, bonds_pairs,
+                                   thetas_pairs, self.explicit_is_final)
 
         if ((_lambda.type == DUAL_LAMBDA) or
                 (_lambda.type == STERIC_LAMBDA)):
+            # Set up non bonding parameters
             combiner.combine_sigmas()
-            combiner.combine_bond_eq_dist()
+            combiner.combine_epsilons()
             combiner.combine_radnpSGB()
+            combiner.combine_radnpType()
+            combiner.combine_SGBNPGamma()
+            combiner.combine_SGBNPType()
+
+            # Set up bonding parameters
+            combiner.combine_BondSprings()
+            combiner.combine_BondEqDist()
+            combiner.combine_ThetaSprings()
 
         if ((_lambda.type == DUAL_LAMBDA) or
                 (_lambda.type == COULOMBIC_LAMBDA)):
@@ -171,6 +193,28 @@ def set_fragment_bonds(list_of_fragment_bonds):
         bond.is_unique = True
 
 
+def detect_fragment_thetas(list_of_fragment_atoms, exclusive_template):
+    fragment_thetas = []
+    fragment_indexes = []
+    for atom in list_of_fragment_atoms:
+        fragment_indexes.append(atom.atom_id)
+    fragment_indexes = list(set(fragment_indexes))
+    for keys, theta in exclusive_template.list_of_thetas.items():
+        found = False
+        for key in keys:
+            if (key in fragment_indexes):
+                found = True
+                break
+        if (found):
+            fragment_thetas.append(theta)
+    return fragment_thetas
+
+
+def set_fragment_thetas(list_of_fragment_thetas):
+    for theta in list_of_fragment_thetas:
+        theta.is_unique = True
+
+
 def set_connecting_atoms(template1, pdb_atom_name1, template2, pdb_atom_name2):
     atom1 = template1.get_atom_by_pdb_atom_name(pdb_atom_name1)
     atom2 = template2.get_atom_by_pdb_atom_name(pdb_atom_name2)
@@ -203,3 +247,51 @@ def set_connecting_bonds(atoms_pair, template1, template2):
                         "{}".format(atoms_pair[1].pdb_atom_name))
 
     return (b1, b2)
+
+
+def set_connecting_thetas(bonds_pair, template1, template2):
+    t1 = []
+    t2 = []
+
+    for keys, theta in template1.list_of_thetas.items():
+        if ((bonds_pair[0].atom1 in keys) and (bonds_pair[0].atom2 in keys)):
+            for key in keys:
+                if (key in (bonds_pair[0].atom1, bonds_pair[0].atom2)):
+                    continue
+                if (not template1.list_of_atoms[key].is_unique):
+                    t1.append(theta)
+
+    for keys, theta in template2.list_of_thetas.items():
+        if ((bonds_pair[1].atom1 in keys) and (bonds_pair[1].atom2 in keys)):
+            for key in keys:
+                if (key in (bonds_pair[1].atom1, bonds_pair[1].atom2)):
+                    continue
+                if (not template2.list_of_atoms[key].is_unique):
+                    t2.append(theta)
+
+    t2_indexes = []
+
+    for theta1 in t1:
+        for key in (theta1.atom1, theta1.atom2, theta1.atom3):
+            if (key in (bonds_pair[0].atom1, bonds_pair[0].atom2)):
+                continue
+            third_atom_name = template1.list_of_atoms[key].pdb_atom_name
+
+        for index, theta2 in enumerate(t2):
+            for key in (theta2.atom1, theta2.atom2, theta2.atom3):
+                if (key in (bonds_pair[0].atom1, bonds_pair[0].atom2)):
+                    continue
+                if (template2.list_of_atoms[key].pdb_atom_name ==
+                        third_atom_name):
+                    t2_indexes.append(index)
+
+    ordered_t2 = []
+
+    if (len(t2_indexes) != len(t2)):
+        raise NameError("Some thetas do not match between templates. " +
+                        " Do complementary atoms have same pdb names?")
+
+    for index in t2_indexes:
+        ordered_t2.append(t2[index])
+
+    return zip(t1, ordered_t2)

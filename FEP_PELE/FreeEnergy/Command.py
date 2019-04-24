@@ -10,6 +10,7 @@ from . import Constants as co
 from .CheckPoint import CheckPoint
 
 from FEP_PELE.Tools.LambdaFolder import LambdaFolder
+from FEP_PELE.Tools.PDBTools import PDBParser
 
 from FEP_PELE.PELETools import PELEConstants as pele_co
 
@@ -47,6 +48,8 @@ class Command(object):
         self.checkPoint = checkPoint
 
     def _run_with_splitted_lambdas(self, alchemicalTemplateCreator):
+        output = []
+
         c_lambdas = self.settings.c_lambdas
         s_lambdas = self.settings.lj_lambdas
         if (len(c_lambdas) < 1):
@@ -63,24 +66,30 @@ class Command(object):
             # are not the final ones, charges will be zero. Then,
             # progressively will be applied to them.
             c_lambda = Lambda.Lambda(0, lambda_type=Lambda.COULOMBIC_LAMBDA)
-            self._run(alchemicalTemplateCreator, s_lambdas,
-                      Lambda.STERIC_LAMBDA, num=1, constant_lambda=c_lambda)
+            output += self._run(alchemicalTemplateCreator, s_lambdas,
+                                Lambda.STERIC_LAMBDA, num=1,
+                                constant_lambda=c_lambda)
 
             s_lambda = Lambda.Lambda(1, lambda_type=Lambda.STERIC_LAMBDA)
-            self._run(alchemicalTemplateCreator, c_lambdas,
-                      Lambda.COULOMBIC_LAMBDA, num=2, constant_lambda=s_lambda)
+            output += self._run(alchemicalTemplateCreator, c_lambdas,
+                                Lambda.COULOMBIC_LAMBDA, num=2,
+                                constant_lambda=s_lambda)
         else:
             # Case where the initial atomset contains the final
             # atomset. So, there are atoms that will disappear.
             # In this way, we need to annihilate first coulombic
             # charges, then, we modify Lennard Jones parameters.
             s_lambda = Lambda.Lambda(0, lambda_type=Lambda.STERIC_LAMBDA)
-            self._run(alchemicalTemplateCreator, c_lambdas,
-                      Lambda.COULOMBIC_LAMBDA, num=1, constant_lambda=s_lambda)
+            output += self._run(alchemicalTemplateCreator, c_lambdas,
+                                Lambda.COULOMBIC_LAMBDA, num=1,
+                                constant_lambda=s_lambda)
 
             c_lambda = Lambda.Lambda(1, lambda_type=Lambda.COULOMBIC_LAMBDA)
-            self._run(alchemicalTemplateCreator, s_lambdas,
-                      Lambda.STERIC_LAMBDA, num=2, constant_lambda=c_lambda)
+            output += self._run(alchemicalTemplateCreator, s_lambdas,
+                                Lambda.STERIC_LAMBDA, num=2,
+                                constant_lambda=c_lambda)
+
+        return output
 
     def _createAlchemicalTemplate(self, alchemicalTemplateCreator,
                                   lambda_, constant_lambda):
@@ -126,3 +135,37 @@ class Command(object):
             selected_folders.append(LambdaFolder(folder))
 
         return selected_folders
+
+    def _getAtomsToMinimize(self, alchemicalTemplateCreator):
+        # @TODO maybe add their parent atoms as well
+        fragment_atoms = alchemicalTemplateCreator.getFragmentAtoms()
+
+        atoms_to_minimize = []
+        for fragment_atom in fragment_atoms:
+            atoms_to_minimize.append(fragment_atom.pdb_atom_name)
+
+        return atoms_to_minimize
+
+    def _getAtomIdsToMinimize(self, alchemicalTemplateCreator):
+        atoms_to_minimize = self._getAtomsToMinimize(alchemicalTemplateCreator)
+
+        if (alchemicalTemplateCreator.explicit_is_final):
+            pdb_parser = PDBParser(self.settings.final_ligand_pdb)
+        else:
+            pdb_parser = PDBParser(self.settings.initial_ligand_pdb)
+
+        if (len(pdb_parser.links) == 0):
+            print("DoubleWideSampling error: ligand not found in " +
+                  "ligand PDB: {}".format(pdb_parser))
+
+        if (len(pdb_parser.links) > 1):
+            print("DoubleWideSampling error: found more than one link in " +
+                  "ligand PDB: {}".format(pdb_parser))
+
+        ligand_link = pdb_parser.links[0]
+
+        link_id = ligand_link.chain + ':' + str(ligand_link.number)
+
+        atom_ids_to_minimize = [link_id + ':' + i for i in atoms_to_minimize]
+
+        return atom_ids_to_minimize

@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 
 
-# Imports
+# Python imports
 import sys
 
+
+# FEP_PELE imports
+from FEP_PELE.Utils.InOut import checkFile
+from .Molecules import atomBuilder, linkBuilder, chainBuilder
 
 # Script information
 __author__ = "Marti Municoy"
@@ -14,6 +18,191 @@ __email__ = "marti.municoy@bsc.es"
 
 
 # Classes
+class PDBParser:
+    def __init__(self, pdb_path):
+        try:
+            checkFile(pdb_path)
+        except NameError:
+            raise NameError("PDBParser Error: no PDB file found in path " +
+                            "{}".format(pdb_path))
+        self._path = pdb_path
+
+        self._atoms = []
+        self._links = []
+        self._chains = []
+
+        self.__temporary_atoms_chunk = []
+        self.__temporary_links_chunk = []
+
+        self._processPDB()
+
+    @property
+    def all_links(self):
+        return self._all_links
+
+    @property
+    def atoms(self):
+        return self._atoms
+
+    @property
+    def links(self):
+        return self._links
+
+    @property
+    def chains(self):
+        return self._chains
+
+    def _processPDB(self):
+        with open(self._path, 'r') as file:
+            for line in file:
+                if (self._foundTER(line)):
+                    self._processTER()
+                    continue
+
+                if (len(line) <= 6):
+                    continue
+
+                line_type = line[0:6]
+
+                if (line_type == "ATOM  "):
+                    self._processATOM(line)
+                elif (line_type == "HETATM"):
+                    self._processHETATM(line)
+                elif (line_type == "CONECT"):
+                    self._processCONECT()
+                elif (line_type == "SEQRES"):
+                    self._processSEQRES()
+                elif (line_type == "MODEL "):
+                    self._processMODEL()
+                elif (line_type == "ENDMDL"):
+                    self._processENDMDL()
+                elif (line_type == "REMARK"):
+                    self._processREMARK()
+                else:
+                    print("PDBParser Warning: unknown line type " +
+                          "{}".format(line))
+
+    def _foundTER(self, line):
+        if (len(line) < 3):
+            return False
+
+        line_type = line[0:3]
+
+        return line_type == "TER"
+
+    def _processTER(self):
+        # Add last link
+        if (len(self.__temporary_atoms_chunk) == 0):
+            print("PDBParser Error: invalid TER location was found")
+            sys.exit(1)
+        self._links.append(linkBuilder(self.__temporary_atoms_chunk))
+        self.__temporary_atoms_chunk = []
+
+        # Add last chain
+        self.__temporary_links_chunk.append(self.links[-1])
+        self._chains.append(chainBuilder(self.__temporary_links_chunk))
+        self.__temporary_links_chunk = []
+
+    def _processATOM(self, line):
+        try:
+            checkPDBLine(line)
+        except NameError as e:
+            raise NameError("PDBParser Error: invalid PBD_line, " +
+                            str(e) + ': ' + str(line))
+
+        self._atoms.append(atomBuilder(line))
+
+        self._processLink()
+
+    def _processLink(self):
+        if (len(self.__temporary_atoms_chunk) == 0):
+            self.__temporary_atoms_chunk.append(self.atoms[-1])
+            return
+
+        atom1 = self.atoms[-1]
+        atom2 = self.atoms[-2]
+
+        if ((atom1.chain != atom2.chain) or
+                (atom1.residue_name != atom2.residue_name) or
+                (atom1.residue_number != atom2.residue_number)):
+            self._links.append(linkBuilder(self.__temporary_atoms_chunk))
+            self.__temporary_atoms_chunk = [atom1, ]
+            self._processChain()
+        else:
+            self.__temporary_atoms_chunk.append(atom1)
+
+    def _processChain(self):
+        if (len(self.__temporary_links_chunk) == 0):
+            self.__temporary_links_chunk.append(self.links[-1])
+            return
+
+        link1 = self.links[-1]
+        link2 = self.links[-2]
+
+        if (link1.chain != link2.chain):
+            self._chain.append(chainBuilder(self._temporary_links_chunk))
+            self.__temporary_links_chunk = [link1, ]
+        else:
+            self.__temporary_links_chunk.append(link1)
+
+    def _processHETATM(self, line):
+        self._processATOM(line)
+        self._atoms[-1].is_heteroatom = True
+
+    def _processCONECT(self, line):
+        pass
+
+    def _processSEQRES(self, line):
+        pass
+
+    def _processMODEL(self, line):
+        pass
+
+    def _processENDMDL(self, line):
+        pass
+
+    def _processREMARK(self, line):
+        pass
+
+
+def checkPDBLine(PDB_line):
+    okay = True
+    messages = []
+
+    # Check type
+    if (type(PDB_line) != str):
+        okay = False
+        messages.append("invalid type")
+
+    # Check length
+    if (len(PDB_line) < 77):
+        okay = False
+        messages.append("invalid length")
+
+    if (not okay):
+        raise NameError(', '.join(messages))
+
+
+def getLineType(PDB_line):
+    try:
+        checkPDBLine(PDB_line)
+    except NameError as e:
+        raise NameError("PDBTools.getLineType Error: invalid PBD_line, " +
+                        str(e))
+
+    return PDB_line[0:6]
+
+
+def getAtomName(PDB_line):
+    try:
+        checkPDBLine(PDB_line)
+    except NameError as e:
+        raise NameError("PDBTools.getAtomName Error: invalid PBD_line, " +
+                        str(e))
+
+    return PDB_line[12:16]
+
+
 class PDBHandler:
     def __init__(self, simulation):
         self.simulation = simulation
