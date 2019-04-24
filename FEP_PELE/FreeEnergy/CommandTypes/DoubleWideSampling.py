@@ -142,6 +142,8 @@ class DoubleWideSampling(Command):
 
         clear_directory(self.settings.calculation_path)
 
+        return []
+
     def _parallelTrajectoryWriterLoop(self, alchemicalTemplateCreator,
                                       report_file):
 
