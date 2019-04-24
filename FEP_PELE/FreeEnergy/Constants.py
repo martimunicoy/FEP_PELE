@@ -1,32 +1,17 @@
+# -*- coding: utf-8 -*-
 
 
+# FEP_PELE imports
 from FEP_PELE.PELETools import PELEConstants as pele_co
 
-# Default settings
-DEF_SERIAL_PELE = ""
-DEF_MPI_PELE = ""
-DEF_INITIAL_TEMPLATE = ""
-DEF_FINAL_TEMPLATE = ""
-DEF_ATOM_LINKS = []
-DEF_LAMBDAS = [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95]
-DEF_LJ_LAMBDAS = []
-DEF_C_LAMBDAS = []
-DEF_NUMBER_OF_PROCESSORS = 4
-DEF_COMMANDS = []
-DEF_MIN_CONTROL_FILE = "min_pele.conf"
-DEF_SIM_CONTROL_FILE = "sim_pele.conf"
-DEF_PP_CONTROL_FILE = "pele_recal.conf"
-DEF_SP_CONTROL_FILE = "pele_sp.conf"
-DEF_SAFETY_CHECK = False
-DEF_MIN_FOLDER = "minimization/"
-DEF_SIM_FOLDER = "simulation/"
-DEF_CAL_FOLDER = "calculation/"
-DEF_INPUT_PDB = ""
-DEF_INITIAL_LIGAND_PDB = ""
-DEF_FINAL_LIGAND_PDB = ""
-DEF_SOLVENT_TYPE = pele_co.SGBNP_TYPE_NAME
-DEF_LAMBDA_SPLITTING = False
-DEF_RESTART = False
+
+# Script information
+__author__ = "Marti Municoy"
+__license__ = "GPL"
+__version__ = "1.0.1"
+__maintainer__ = "Marti Municoy"
+__email__ = "marti.municoy@bsc.es"
+
 
 # Input file keys
 INPUT_FILE_KEYS = [
@@ -44,6 +29,7 @@ INPUT_FILE_KEYS = [
     "Lambdas",
     "StericLambdas",
     "CoulombicLambdas",
+    "SamplingMethod",
     "NumberOfProcessors",
     "SafetyCheck",
     "SolventType",
@@ -80,47 +66,107 @@ CONTROL_FILE_DICT = {
     "LAMBDAS": INPUT_FILE_KEYS[6],
     "LJ_LAMBDAS": INPUT_FILE_KEYS[7],
     "C_LAMBDAS": INPUT_FILE_KEYS[8],
-    "NUMBER_OF_PROCESSORS": INPUT_FILE_KEYS[9],
-    "SAFETY_CHECK": INPUT_FILE_KEYS[10],
-    "SOLVENT_TYPE": INPUT_FILE_KEYS[11],
-    "RESTART": INPUT_FILE_KEYS[12],
+    "SAMPLING_METHOD": INPUT_FILE_KEYS[9],
+    "NUMBER_OF_PROCESSORS": INPUT_FILE_KEYS[10],
+    "SAFETY_CHECK": INPUT_FILE_KEYS[11],
+    "SOLVENT_TYPE": INPUT_FILE_KEYS[12],
+    "RESTART": INPUT_FILE_KEYS[13],
     # List of commands
-    "COMMANDS": INPUT_FILE_KEYS[13],
+    "COMMANDS": INPUT_FILE_KEYS[14],
     # PELE control files
-    "MIN_CONTROL_FILE": INPUT_FILE_KEYS[14],
-    "SIM_CONTROL_FILE": INPUT_FILE_KEYS[15],
-    "PP_CONTROL_FILE": INPUT_FILE_KEYS[16],
-    "SP_CONTROL_FILE": INPUT_FILE_KEYS[17],
+    "MIN_CONTROL_FILE": INPUT_FILE_KEYS[15],
+    "SIM_CONTROL_FILE": INPUT_FILE_KEYS[16],
+    "PP_CONTROL_FILE": INPUT_FILE_KEYS[17],
+    "SP_CONTROL_FILE": INPUT_FILE_KEYS[18],
     # Folder names
-    "MIN_FOLDER": INPUT_FILE_KEYS[18],
-    "SIM_FOLDER": INPUT_FILE_KEYS[19],
-    "CAL_FOLDER": INPUT_FILE_KEYS[20],
+    "MIN_FOLDER": INPUT_FILE_KEYS[19],
+    "SIM_FOLDER": INPUT_FILE_KEYS[20],
+    "CAL_FOLDER": INPUT_FILE_KEYS[21],
     # Input PDB path
-    "INPUT_PDB": INPUT_FILE_KEYS[21],
-    "INITIAL_LIGAND_PDB": INPUT_FILE_KEYS[22],
-    "FINAL_LIGAND_PDB": INPUT_FILE_KEYS[23]}
+    "INPUT_PDB": INPUT_FILE_KEYS[22],
+    "INITIAL_LIGAND_PDB": INPUT_FILE_KEYS[23],
+    "FINAL_LIGAND_PDB": INPUT_FILE_KEYS[24]}
 
 # List of Command names
 COMMAND_NAMES_LIST = [
-    # Lambda Simulation-related commands
-    "LambdaSimulation",
-    "UnboundLambdaSimulation",
-    # Samping-related commands
-    "DoubleWideSampling",
-    # Free Energy calculation-related commands
+    # Bound state-related commands
+    "LambdasSampling",
+    "dECalculation",
+    # Analysis commands
     "ExponentialAveraging",
+    # Unbound state-related commands
+    "Unbound-dECalculation",
+    # Others
     "SolvationFreeEnergyCalculation"]
 
 # Dictionary of Command names
 COMMAND_NAMES_DICT = {
-    # Lambda Simulation-related commands
-    "LAMBDA_SIMULATION": COMMAND_NAMES_LIST[0],
-    "UNBOUND_LAMBDA_SIMULATION": COMMAND_NAMES_LIST[1],
-    # Samping-related commands
-    "DOUBLE_WIDE_SAMPLING": COMMAND_NAMES_LIST[2],
-    # Free Energy calculation-related commands
-    "EXPONENTIAL_AVERAGING": COMMAND_NAMES_LIST[3],
+    # Bound state-related commands
+    "LAMBDAS_SAMPLING": COMMAND_NAMES_LIST[0],
+    "DE_CALCULATION": COMMAND_NAMES_LIST[1],
+    # Analysis commands
+    "EXPONENTIAL_AVERAGING": COMMAND_NAMES_LIST[2],
+    # Unbound state-related commands
+    "UNBOUND_DE_CALCULATION": COMMAND_NAMES_LIST[3],
+    # Others
     "SOLVATION_FREE_ENERGY_CALCULATION": COMMAND_NAMES_LIST[4]}
+
+# Dictionary of Command labels
+COMMAND_LABELS_DICT = {
+    # Bound state-related commands
+    "LAMBDAS_SAMPLING": "Lambda Sampling",
+    "DE_CALCULATION": "dE Calculation",
+    # Analysis commands
+    "EXPONENTIAL_AVERAGING": "Exponential Averaging",
+    # Unbound state-related commands
+    "UNBOUND_DE_CALCULATION": "Unbound dE Calculation",
+    # Others
+    "SOLVATION_FREE_ENERGY_CALCULATION": "Solvation Free Energy Calculation"}
+
+# List of sampling methods
+SAMPLING_METHODS_LIST = [
+    "DoubleWide",
+    "Overlap",
+    "DoubleEnd"]
+
+# Dictionary of sampling methods names
+SAMPLING_METHODS_DICT = {
+    "DOUBLE_WIDE": SAMPLING_METHODS_LIST[0],
+    "OVERLAP": SAMPLING_METHODS_LIST[1],
+    "DOUBLE_END": SAMPLING_METHODS_LIST[2]}
+
+# Dictionary of sampling methods labels
+SAMPLING_METHODS_NAMES = {
+    "DOUBLE_WIDE": "double-wide sampling [0 <-- M --> 1]",
+    "OVERLAP": "overlap sampling [0 --> M <-- 1]",
+    "DOUBLE_END": "double-end sampling [0 <--> 1]"}
+
+# Default settings
+DEF_SERIAL_PELE = ""
+DEF_MPI_PELE = ""
+DEF_INITIAL_TEMPLATE = ""
+DEF_FINAL_TEMPLATE = ""
+DEF_ATOM_LINKS = []
+DEF_LAMBDAS = [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95]
+DEF_LJ_LAMBDAS = []
+DEF_C_LAMBDAS = []
+DEF_SAMPLING_METHOD = SAMPLING_METHODS_DICT["DOUBLE_WIDE"]
+DEF_NUMBER_OF_PROCESSORS = 4
+DEF_COMMANDS = []
+DEF_MIN_CONTROL_FILE = "min_pele.conf"
+DEF_SIM_CONTROL_FILE = "sim_pele.conf"
+DEF_PP_CONTROL_FILE = "pele_recal.conf"
+DEF_SP_CONTROL_FILE = "pele_sp.conf"
+DEF_SAFETY_CHECK = False
+DEF_MIN_FOLDER = "minimization/"
+DEF_SIM_FOLDER = "simulation/"
+DEF_CAL_FOLDER = "calculation/"
+DEF_INPUT_PDB = ""
+DEF_INITIAL_LIGAND_PDB = ""
+DEF_FINAL_LIGAND_PDB = ""
+DEF_SOLVENT_TYPE = pele_co.SGBNP_TYPE_NAME
+DEF_LAMBDA_SPLITTING = False
+DEF_RESTART = False
 
 # Folder names
 MODELS_FOLDER = "models/"
@@ -139,13 +185,14 @@ CHECKPOINT_NAME = ".FEP_PELE.ckp"
 # Direction definitions
 DIRECTION_NAMES = ['BACKWARDS', 'FORWARD']
 DIRECTION_CHARS = ['b', 'f']
+DIRECTION_LABELS = {DIRECTION_NAMES[0]: "backwards",
+                    DIRECTION_NAMES[1]: "forward"}
 DIRECTION_TO_CHAR = {DIRECTION_NAMES[0]: DIRECTION_CHARS[0],
                      DIRECTION_NAMES[1]: DIRECTION_CHARS[1]}
 CHAR_TO_DIRECTION = {DIRECTION_CHARS[0]: DIRECTION_NAMES[0],
                      DIRECTION_CHARS[1]: DIRECTION_NAMES[1]}
 DIRECTION_FACTORS = {DIRECTION_NAMES[0]: -1,
                      DIRECTION_NAMES[1]: +1}
-DOUBLE_WIDE_SAMPLING_DIRECTIONS = DIRECTION_NAMES
 
 # Physical constants
 BOLTZMANN_CONSTANT_IN_KCAL_MOL = 0.0019872041

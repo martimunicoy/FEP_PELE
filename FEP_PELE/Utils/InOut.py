@@ -192,6 +192,16 @@ def writeLambdaTitle(lambda_object):
     print()
 
 
+def printCommandTitle(label):
+    for i in range(0, len(str(label)) + 2):
+        print('#', end='')
+    print()
+    print(" " + str(label))
+    for i in range(0, len(str(label)) + 2):
+        print('#', end='')
+    print()
+
+
 def deleteAllFilesWithExtension(path, extension):
     files = get_all_files_from_with_extension(path, extension)
 

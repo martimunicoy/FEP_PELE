@@ -25,6 +25,7 @@ class CheckPoint(object):
         self._restart_available = False
         self._completed_commands = {}
         self._initialized = False
+        self._data = None
 
     @property
     def restart_available(self):
@@ -60,6 +61,7 @@ class CheckPoint(object):
 
             if (data['Settings'] == str(self._settings)):
                 self._restart_available = True
+                self._data = data
             else:
                 raise RuntimeError("settings in the current checkpoint " +
                                    "do not match with settings from the " +
@@ -74,18 +76,15 @@ class CheckPoint(object):
 
         command_to_save, checkpoint = checkPointData
 
-        with open(self._path, 'rb') as file:
-            data = pickle.load(file)
-
-        for command, checkpoints in data.items():
+        for command, checkpoints in self._data.items():
             if (command == command_to_save):
                 checkpoints.add(checkpoint)
                 break
         else:
-            data[command_to_save] = set([checkpoint, ])
+            self._data[command_to_save] = set([checkpoint, ])
 
         with open(self._path, 'wb') as file:
-            pickle.dump(data, file)
+            pickle.dump(self._data, file)
 
     def check(self, checkPointData):
         if (not self.initialized):

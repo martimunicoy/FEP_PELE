@@ -29,6 +29,8 @@ __email__ = "marti.municoy@bsc.es"
 class SolvationFreeEnergyCalculation(Command):
     def __init__(self, settings):
         self._name = co.COMMAND_NAMES_DICT["SOLVATION_FREE_ENERGY_CALCULATION"]
+        self._label = co.COMMAND_LABELS_DICT[
+            "SOLVATION_FREE_ENERGY_CALCULATION"]
         Command.__init__(self, settings)
 
     @property
@@ -36,9 +38,7 @@ class SolvationFreeEnergyCalculation(Command):
         return self._name
 
     def run(self):
-        print("###################################")
-        print(" Solvation Free Energy Calculation")
-        print("###################################")
+        self._start()
 
         clear_directory(self.settings.minimization_path)
 
@@ -69,6 +69,8 @@ class SolvationFreeEnergyCalculation(Command):
 
         print(" - Relative Solvation Free Energy prediction " +
               "{:.2f} kcal/mol".format(result))
+
+        self._finish()
 
     def _calculateSolvationFreeEnergy(self, runner, pdb_path):
         print("  - Minimizing and calculating energy in vacuum")

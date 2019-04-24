@@ -29,25 +29,45 @@ class LambdaFolder(object):
 
         name = getLastFolderFromPath(path)
 
-        if (len(name) < 2):
+        lambda_values = name.split('_')
+
+        if (len(lambda_values) != 2):
             raise AttributeError("Invalid name of lambda folder: " +
                                  "{}".format(name))
 
+        initial_lambda, final_lambda = lambda_values
+
         try:
-            lambda_value = float(name[:-1])
+            initial_lambda = float(initial_lambda)
+            final_lambda = float(final_lambda)
         except ValueError:
             raise AttributeError("Invalid name of lambda folder: " +
                                  "{}".format(name))
 
-        if (name[-1] not in co.DIRECTION_CHARS):
+        if (initial_lambda > 1) or (initial_lambda < 0):
+            raise AttributeError("Invalid name of lambda folder: " +
+                                 "{}".format(name))
+
+        if (final_lambda > 1) or (final_lambda < 0):
+            raise AttributeError("Invalid name of lambda folder: " +
+                                 "{}".format(name))
+
+        if (initial_lambda == final_lambda):
             raise AttributeError("Invalid name of lambda folder: " +
                                  "{}".format(name))
 
         self.__path = path
         self.__name = name
-        self.__lambda_value = lambda_value
-        self.__direction = co.CHAR_TO_DIRECTION[name[-1]]
-        self.__direction_factor = float(co.DIRECTION_FACTORS[self.__direction])
+        self.__initial_lambda = initial_lambda
+        self.__final_lambda = final_lambda
+
+        if (initial_lambda < final_lambda):
+            direction_name = "FORWARD"
+        else:
+            direction_name = "BACKWARDS"
+
+        self.__direction = co.DIRECTION_LABELS[direction_name]
+        self.__direction_factor = co.DIRECTION_FACTORS[direction_name]
 
     @property
     def path(self):
@@ -58,8 +78,12 @@ class LambdaFolder(object):
         return self.__name
 
     @property
-    def lambda_value(self):
-        return self.__lambda_value
+    def initial_lambda(self):
+        return self.__initial_lambda
+
+    @property
+    def final_lambda(self):
+        return self.__final_lambda
 
     @property
     def direction(self):

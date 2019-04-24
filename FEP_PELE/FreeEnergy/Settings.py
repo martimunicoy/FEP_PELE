@@ -38,6 +38,7 @@ class Settings(object):
         self.__lambdas = co.DEF_LAMBDAS
         self.__lj_lambdas = co.DEF_LJ_LAMBDAS
         self.__c_lambdas = co.DEF_C_LAMBDAS
+        self.__sampling_method = co.DEF_SAMPLING_METHOD
         self.__number_of_processors = co.DEF_NUMBER_OF_PROCESSORS
         self.__commands = co.DEF_COMMANDS
         self.__min_control_file = co.DEF_MIN_CONTROL_FILE
@@ -93,6 +94,10 @@ class Settings(object):
     @property
     def c_lambdas(self):
         return self.__c_lambdas
+
+    @property
+    def sampling_method(self):
+        return self.__sampling_method
 
     @property
     def number_of_processors(self):
@@ -256,6 +261,11 @@ class Settings(object):
                 print("Error while setting coulombic lambdas. " +
                       "They are not sorted in ascending order.")
                 exit(1)
+
+        elif (key == co.CONTROL_FILE_DICT["SAMPLING_METHOD"]):
+            value = self._getSingleValue(key, value)
+            self._checkSamplingMethodsNames(key, value)
+            self.__sampling_method = str(value)
 
         elif (key == co.CONTROL_FILE_DICT["NUMBER_OF_PROCESSORS"]):
             value = self._getSingleValue(key, value)
@@ -461,6 +471,19 @@ class Settings(object):
         if (value < 1):
             okay = False
             message += "Input value is not a positive integer. "
+
+        if (not okay):
+            print("Error while setting \'{}\',\'{}\'".format(key, value) +
+                  ": " + message)
+            exit(1)
+
+    def _checkSamplingMethodsNames(self, key, value):
+        okay = True
+        message = ""
+
+        if (value not in co.SAMPLING_METHODS_LIST):
+            okay = False
+            message += "Sampling method not recogniced. "
 
         if (not okay):
             print("Error while setting \'{}\',\'{}\'".format(key, value) +

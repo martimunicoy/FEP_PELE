@@ -14,6 +14,7 @@ from FEP_PELE.Tools.PDBTools import PDBParser
 
 from FEP_PELE.PELETools import PELEConstants as pele_co
 
+from FEP_PELE.Utils.InOut import printCommandTitle
 from FEP_PELE.Utils.InOut import getFoldersInAPath
 from FEP_PELE.Utils.InOut import getLastFolderFromPath
 
@@ -65,11 +66,13 @@ class Command(object):
             # partial charge. Until their Lennard Jones parameters
             # are not the final ones, charges will be zero. Then,
             # progressively will be applied to them.
+            self._lambdasCheckUp(s_lambdas, num=1)
             c_lambda = Lambda.Lambda(0, lambda_type=Lambda.COULOMBIC_LAMBDA)
             output += self._run(alchemicalTemplateCreator, s_lambdas,
                                 Lambda.STERIC_LAMBDA, num=1,
                                 constant_lambda=c_lambda)
 
+            self._lambdasCheckUp(s_lambdas, num=2)
             s_lambda = Lambda.Lambda(1, lambda_type=Lambda.STERIC_LAMBDA)
             output += self._run(alchemicalTemplateCreator, c_lambdas,
                                 Lambda.COULOMBIC_LAMBDA, num=2,
@@ -79,17 +82,56 @@ class Command(object):
             # atomset. So, there are atoms that will disappear.
             # In this way, we need to annihilate first coulombic
             # charges, then, we modify Lennard Jones parameters.
+            self._lambdasCheckUp(s_lambdas, num=1)
             s_lambda = Lambda.Lambda(0, lambda_type=Lambda.STERIC_LAMBDA)
             output += self._run(alchemicalTemplateCreator, c_lambdas,
                                 Lambda.COULOMBIC_LAMBDA, num=1,
                                 constant_lambda=s_lambda)
 
+            self._lambdasCheckUp(s_lambdas, num=2)
             c_lambda = Lambda.Lambda(1, lambda_type=Lambda.COULOMBIC_LAMBDA)
             output += self._run(alchemicalTemplateCreator, s_lambdas,
                                 Lambda.STERIC_LAMBDA, num=2,
                                 constant_lambda=c_lambda)
 
         return output
+
+    def _lambdasCheckUp(self, lambdas, num):
+        if ((self.settings.sampling_method ==
+             co.SAMPLING_METHODS_DICT["OVERLAP"]) or
+            (self.settings.sampling_method ==
+             co.SAMPLING_METHODS_DICT["DOUBLE_END"])):
+            self._lambdasCheckUpWithEdges(lambdas, num)
+        else:
+            self._lambdasCheckUpWithoutEdges(lambdas, num)
+
+    def _lambdasCheckUpWithEdges(self, lambdas, num):
+        edges = (0.0, 1.0)
+        indexes = (0, -1)
+        positions = (0, len(lambdas))
+
+        lambda_ = lambdas[indexes[num - 1]]
+        lambda_value = edges[num - 1]
+
+        if (lambda_ != lambda_value):
+            print("  - Warning: adding extra lambda {}".format(lambda_value) +
+                  ", required for {} ".format(self.settings.sampling_method) +
+                  "sampling")
+            lambdas.insert(positions[num - 1], lambda_value)
+
+    def _lambdasCheckUpWithoutEdges(self, lambdas, num):
+        edges = (0.0, 1.0)
+        indexes = (0, -1)
+        positions = (0, len(lambdas) - 1)
+
+        lambda_ = lambdas[indexes[num - 1]]
+        lambda_value = edges[num - 1]
+
+        if (lambda_ == lambda_value):
+            print("  - Warning: removing extra lambda " +
+                  "{}, not compatible with ".format(lambda_value) +
+                  "{} sampling".format(self.settings.sampling_method))
+            del lambdas[positions[num - 1]]
 
     def _createAlchemicalTemplate(self, alchemicalTemplateCreator,
                                   lambda_, constant_lambda):
@@ -115,21 +157,27 @@ class Command(object):
         for folder in folders:
             name = getLastFolderFromPath(folder)
 
-            if (len(name) < 2):
+            lambda_values = name.split('_')
+
+            if (len(lambda_values) != 2):
                 continue
 
-            lambda_value = name[:-1]
-            direction = name[-1]
+            initial_lambda, final_lambda = lambda_values
 
             try:
-                lambda_value = float(lambda_value)
+                initial_lambda = float(initial_lambda)
             except ValueError:
                 continue
 
-            if (lambda_value > 1) or (lambda_value < 0):
+            try:
+                final_lambda = float(final_lambda)
+            except ValueError:
                 continue
 
-            if (direction not in co.DIRECTION_CHARS):
+            if (initial_lambda > 1) or (initial_lambda < 0):
+                continue
+
+            if (final_lambda > 1) or (final_lambda < 0):
                 continue
 
             selected_folders.append(LambdaFolder(folder))
@@ -169,3 +217,9 @@ class Command(object):
         atom_ids_to_minimize = [link_id + ':' + i for i in atoms_to_minimize]
 
         return atom_ids_to_minimize
+
+    def _start(self):
+        printCommandTitle(self._label)
+
+    def _finish(self):
+        pass

@@ -11,6 +11,8 @@ from functools import partial
 from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.FreeEnergy.Checkers import checkModelCoords
+from FEP_PELE.FreeEnergy.SamplingMethods.SamplingMethodBuilder import \
+    SamplingMethodBuilder
 
 from FEP_PELE.TemplateHandler import Lambda
 from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
@@ -40,27 +42,37 @@ __email__ = "marti.municoy@bsc.es"
 
 
 # Class definitions
-class DoubleWideSampling(Command):
+class dECalculation(Command):
     def __init__(self, settings):
-        self._name = co.COMMAND_NAMES_DICT["DOUBLE_WIDE_SAMPLING"]
+        self._name = co.COMMAND_NAMES_DICT["DE_CALCULATION"]
+        self._label = co.COMMAND_LABELS_DICT["DE_CALCULATION"]
         Command.__init__(self, settings)
-        self.directions = co.DOUBLE_WIDE_SAMPLING_DIRECTIONS
+        self._path = self.settings.calculation_path
+
+        builder = SamplingMethodBuilder(self.settings)
+        self._s_method = builder.createSamplingMethod()
 
     @property
     def name(self):
         return self._name
 
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def s_method(self):
+        return self._s_method
+
     def run(self):
-        print("######################")
-        print(" Double Wide Sampling")
-        print("######################")
+        self._start()
 
         alchemicalTemplateCreator = AlchemicalTemplateCreator(
             self.settings.initial_template,
             self.settings.final_template,
             self.settings.atom_links)
 
-        clear_directory(self.settings.calculation_path)
+        clear_directory(self.path)
 
         if (self.settings.splitted_lambdas):
             self._run_with_splitted_lambdas(alchemicalTemplateCreator)
@@ -68,12 +80,20 @@ class DoubleWideSampling(Command):
             self._run(alchemicalTemplateCreator, self.settings.lambdas,
                       Lambda.DUAL_LAMBDA)
 
+        self._finish()
+
     def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
              constant_lambda=None):
+
         for lambda_ in Lambda.IterateOverLambdas(lambdas, lambdas_type):
+            if (self.checkPoint.check((self.name, str(num) +
+                                       str(lambda_.type) +
+                                       str(lambda_.value)))):
+                continue
+
             writeLambdaTitle(lambda_)
 
-            clear_directory(self.settings.calculation_path + co.MODELS_FOLDER)
+            clear_directory(self.path + co.MODELS_FOLDER)
 
             path = self.settings.simulation_path
             if (lambda_.type != Lambda.DUAL_LAMBDA):
@@ -108,16 +128,10 @@ class DoubleWideSampling(Command):
 
             # ---------------------------------------------------------------------
 
-            delta_lambda = lambda_.get_delta()
-
-            for direction in self.directions:
-                dir_factor = co.DIRECTION_FACTORS[direction]
+            for shifted_lambda in self.s_method.getShiftedLambdas(lambda_):
                 print(" - Creating alchemical template")
                 print("  - Applying delta lambda " +
-                      str(round(dir_factor * delta_lambda, 3)))
-
-                value = lambda_.value + dir_factor * delta_lambda
-                shifted_lambda = Lambda.Lambda(value, lambda_type=lambda_.type)
+                      str(round(shifted_lambda.value - lambda_.value, 3)))
 
                 self._createAlchemicalTemplate(alchemicalTemplateCreator,
                                                shifted_lambda, constant_lambda)
@@ -132,15 +146,18 @@ class DoubleWideSampling(Command):
                     alchemicalTemplateCreator)
 
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       lambda_, atoms_to_minimize, direction,
-                                       num)
+                                       lambda_, shifted_lambda,
+                                       atoms_to_minimize, num)
 
                 with Pool(self.settings.number_of_processors) as pool:
                     pool.map(parallelLoop, simulation.iterateOverReports)
 
                 print("   Done")
 
-        clear_directory(self.settings.calculation_path)
+            self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
+                                  str(lambda_.value)))
+
+            clear_directory(self.path)
 
         return []
 
@@ -151,8 +168,8 @@ class DoubleWideSampling(Command):
 
         for model_id in range(0, report_file.trajectory.models.number):
 
-            model_name = self.settings.calculation_path + co.MODELS_FOLDER + \
-                str(model_id) + '-' + report_file.trajectory.name
+            model_name = self.path + co.MODELS_FOLDER + str(model_id) + \
+                '-' + report_file.trajectory.name
 
             report_file.trajectory.writeModel(model_id, model_name)
 
@@ -166,16 +183,16 @@ class DoubleWideSampling(Command):
 
         return models_to_discard
 
-    def _parallelPELEMinimizerLoop(self, lambda_, atoms_to_minimize, direction,
-                                   num, report_file):
+    def _parallelPELEMinimizerLoop(self, lambda_, shifted_lambda,
+                                   atoms_to_minimize, num, report_file):
 
-        lambda_value = str(round(lambda_.value, 3)) + \
-            co.DIRECTION_TO_CHAR[direction]
+        lambda_folder = str(round(lambda_.value, 3)) + '_' + \
+            str(round(shifted_lambda.value, 3))
 
-        dir_name = self.settings.calculation_path
+        dir_name = self.path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
             dir_name += str(num) + '_' + lambda_.type + "/"
-        dir_name += lambda_value + "/"
+        dir_name += lambda_folder + "/"
 
         create_directory(dir_name)
 
@@ -187,16 +204,15 @@ class DoubleWideSampling(Command):
         energies = []
 
         for model_id, active in enumerate(report_file.models):
-            pdb_name = self.settings.calculation_path + co.MODELS_FOLDER + \
-                str(model_id) + '-' + report_file.trajectory.name
+            pdb_name = self.path + co.MODELS_FOLDER + str(model_id) + \
+                '-' + report_file.trajectory.name
 
-            logfile_name = self.settings.calculation_path \
-                + co.LOGFILE_NAME.format(pid)
+            logfile_name = self.path + co.LOGFILE_NAME.format(pid)
 
-            trajectory_name = self.settings.calculation_path
+            trajectory_name = self.path
             if (lambda_.type != Lambda.DUAL_LAMBDA):
                 trajectory_name += str(num) + '_' + lambda_.type + "/"
-            trajectory_name += lambda_value + "/" + \
+            trajectory_name += lambda_folder + "/" + \
                 str(model_id) + '-' + report_file.trajectory.name
 
             runner = PELERunner(self.settings.serial_pele,
@@ -215,11 +231,10 @@ class DoubleWideSampling(Command):
                     logfile_name,
                     trajectory_name,
                     atoms_to_minimize,
-                    self.settings.calculation_path +
-                    co.SINGLE_POINT_CF_NAME.format(pid))
+                    self.path + co.SINGLE_POINT_CF_NAME.format(pid))
 
                 try:
-                    output = runner.run(self.settings.calculation_path +
+                    output = runner.run(self.path +
                                         co.SINGLE_POINT_CF_NAME.format(pid))
                 except SystemExit as exception:
                     print("DoubleWideSampling error: \n" + str(exception))
@@ -232,11 +247,10 @@ class DoubleWideSampling(Command):
                     logfile_name,
                     trajectory_name,
                     atoms_to_minimize,
-                    self.settings.calculation_path +
-                    co.POST_PROCESSING_CF_NAME.format(pid))
+                    self.path + co.POST_PROCESSING_CF_NAME.format(pid))
 
                 try:
-                    output = runner.run(self.settings.calculation_path +
+                    output = runner.run(self.path +
                                         co.POST_PROCESSING_CF_NAME.format(pid))
                 except SystemExit as exception:
                     print("DoubleWideSampling error: \n" + str(exception))
@@ -250,10 +264,10 @@ class DoubleWideSampling(Command):
                 print("Error: energy calculation failed")
                 print(output)
 
-        path = self.settings.calculation_path
+        path = self.path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
             path += str(num) + '_' + lambda_.type + "/"
-        path += lambda_value + "/"
+        path += lambda_folder + "/"
 
         # Write trajectories and reports
         write_energies_report(path, report_file, energies)

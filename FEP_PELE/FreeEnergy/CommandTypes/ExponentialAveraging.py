@@ -26,6 +26,7 @@ __email__ = "marti.municoy@bsc.es"
 class ExponentialAveraging(Command):
     def __init__(self, settings):
         self._name = co.COMMAND_NAMES_DICT["EXPONENTIAL_AVERAGING"]
+        self._label = co.COMMAND_LABELS_DICT["EXPONENTIAL_AVERAGING"]
         Command.__init__(self, settings)
 
     @property
@@ -33,9 +34,8 @@ class ExponentialAveraging(Command):
         return self._name
 
     def run(self):
-        print("#######################")
-        print(" Exponential Averaging")
-        print("#######################")
+        self._start()
+
         path = self.settings.calculation_path
 
         if (not isThereAPath(path)):
@@ -62,8 +62,12 @@ class ExponentialAveraging(Command):
             lamda_average = Calculators.calculateThermodynamicAverage(energies)
             lambda_energy = Calculators.zwanzigEquation(lamda_average)
             lambda_energy *= lambda_folder.direction_factor
-            print(lambda_folder.lambda_value, lambda_energy)
+            print("From {} to {}: {}".format(lambda_folder.initial_lambda,
+                                             lambda_folder.final_lambda,
+                                             lambda_energy))
             result += lambda_energy
 
         print(" - Relative Free Energy prediction " +
               "{:.2f} kcal/mol".format(result))
+
+        self._finish()

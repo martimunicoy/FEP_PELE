@@ -8,6 +8,8 @@ import sys
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.FreeEnergy import Constants as co
+from FEP_PELE.FreeEnergy.SamplingMethods.SamplingMethodBuilder import \
+    SamplingMethodBuilder
 
 from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import join_splitted_models
@@ -33,21 +35,26 @@ __email__ = "marti.municoy@bsc.es"
 
 
 # Class definitions
-class UnboundLambdaSimulation(Command):
+class UnbounddECalculation(Command):
     def __init__(self, settings):
-        self._name = co.COMMAND_NAMES_DICT["UNBOUND_LAMBDA_SIMULATION"]
+        self._name = co.COMMAND_NAMES_DICT["UNBOUND_DE_CALCULATION"]
+        self._label = co.COMMAND_LABELS_DICT["UNBOUND_DE_CALCULATION"]
         Command.__init__(self, settings)
-        self.directions = co.DOUBLE_WIDE_SAMPLING_DIRECTIONS
         self.path = self.settings.calculation_path + 'unbound/'
+
+        builder = SamplingMethodBuilder(self.settings)
+        self._s_method = builder.createSamplingMethod()
 
     @property
     def name(self):
         return self._name
 
+    @property
+    def s_method(self):
+        return self._s_method
+
     def run(self):
-        print("###########################")
-        print(" Unbound Lambda Simulation")
-        print("###########################")
+        self._start()
 
         print(" - Calculating energy differences for each delta lambda")
 
@@ -76,6 +83,8 @@ class UnboundLambdaSimulation(Command):
         print(" - Relative Unbound Free Energy prediction " +
               "{:.2f} kcal/mol".format(sum(delta_energies)))
 
+        self._finish()
+
     def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
              constant_lambda=None):
         delta_energies = []
@@ -93,13 +102,12 @@ class UnboundLambdaSimulation(Command):
             initial_energy = self._minimize(alchemicalTemplateCreator, runner,
                                             lambda_)
 
-            final_energies, directions = self._calculateEnergeticDifference(
+            final_energies, factors = self._calculateEnergeticDifference(
                 alchemicalTemplateCreator, lambda_, constant_lambda, num,
                 atoms_to_minimize)
 
-            for final_energy, direction in zip(final_energies, directions):
-                delta_energies.append(co.DIRECTION_FACTORS[direction] *
-                                      (final_energy - initial_energy))
+            for final_energy, factor in zip(final_energies, factors):
+                delta_energies.append(factor * (final_energy - initial_energy))
 
         return delta_energies
 
@@ -129,21 +137,15 @@ class UnboundLambdaSimulation(Command):
     def _calculateEnergeticDifference(self, alchemicalTemplateCreator,
                                       lambda_, constant_lambda, num,
                                       atoms_to_minimize):
-
-        delta_lambda = lambda_.get_delta()
-
         runner = PELERunner(self.settings.serial_pele,
                             number_of_processors=1)
 
         energies = []
+        factors = []
 
-        for direction in self.directions:
-            lambda_name = str(round(lambda_.value, 3)) + \
-                co.DIRECTION_TO_CHAR[direction]
-
-            dir_factor = co.DIRECTION_FACTORS[direction]
-            value = lambda_.value + dir_factor * delta_lambda
-            shifted_lambda = Lambda.Lambda(value, lambda_type=lambda_.type)
+        for shifted_lambda in self.s_method.getShiftedLambdas(lambda_):
+            lambda_folder = str(round(lambda_.value, 3)) + '_' + \
+                str(round(shifted_lambda.value, 3))
 
             self._createAlchemicalTemplate(alchemicalTemplateCreator,
                                            shifted_lambda, constant_lambda)
@@ -151,9 +153,9 @@ class UnboundLambdaSimulation(Command):
             pdb_name = self.path + co.PDB_OUT_NAME.format(str(lambda_.value) +
                                                           'c')
 
-            logfile_name = self.path + co.LOGFILE_NAME.format(lambda_name)
+            logfile_name = self.path + co.LOGFILE_NAME.format(lambda_folder)
 
-            trajectory_name = self.path + co.PDB_OUT_NAME.format(lambda_name)
+            trajectory_name = self.path + co.PDB_OUT_NAME.format(lambda_folder)
 
             self._writeRecalculationControlFile(
                 self.settings.pp_control_file,
@@ -161,10 +163,10 @@ class UnboundLambdaSimulation(Command):
                 logfile_name,
                 trajectory_name,
                 atoms_to_minimize,
-                self.path + co.SINGLE_POINT_CF_NAME.format(lambda_name))
+                self.path + co.SINGLE_POINT_CF_NAME.format(lambda_folder))
 
             output = runner.run(self.path +
-                                co.SINGLE_POINT_CF_NAME.format(lambda_name))
+                                co.SINGLE_POINT_CF_NAME.format(lambda_folder))
 
             for line in output.split('\n'):
                 if line.startswith(pele_co.ENERGY_RESULT_LINE):
@@ -174,7 +176,12 @@ class UnboundLambdaSimulation(Command):
                 print("Error: energy calculation failed")
                 print(output)
 
-        return energies, self.directions
+            if (lambda_.value < shifted_lambda.value):
+                factors.append(float(+1.0))
+            else:
+                factors.append(float(-1.0))
+
+        return energies, factors
 
     def _writeMinimizationControlFile(self, alchemicalTemplateCreator,
                                       lambda_):
