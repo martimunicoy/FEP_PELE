@@ -8,11 +8,11 @@ import sys
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
-from FEP_PELE.FreeEnergy import Calculators
+from FEP_PELE.FreeEnergy.Analysis import Calculators
+from FEP_PELE.FreeEnergy.Analysis import FEPAnalysis
 
 from FEP_PELE.Utils.InOut import isThereAPath
 
-from FEP_PELE.TemplateHandler import Lambda
 
 # Script information
 __author__ = "Marti Municoy"
@@ -28,32 +28,39 @@ class ExponentialAveraging(Command):
         self._name = co.COMMAND_NAMES_DICT["EXPONENTIAL_AVERAGING"]
         self._label = co.COMMAND_LABELS_DICT["EXPONENTIAL_AVERAGING"]
         Command.__init__(self, settings)
+        self._path = self.settings.calculation_path
 
     @property
     def name(self):
         return self._name
 
+    @property
+    def path(self):
+        return self._path
+
     def run(self):
         self._start()
 
-        path = self.settings.calculation_path
-
-        if (not isThereAPath(path)):
+        if (not isThereAPath(self.path)):
             print("Error: no lambda calculation was found in the expected " +
-                  "path {}. You need to run LambdaSimulation ".format(path) +
-                  "and a Sampling command before calling a Calculator " +
-                  "command. Check your parameters.")
+                  "path {}. You need to run ".format(self.path) +
+                  "LambdaSimulation and a Sampling command before calling a " +
+                  "Calculator command. Check your parameters.")
             sys.exit(1)
 
-        if (self.settings.splitted_lambdas):
-            lambda_folders = self._getLambdaFolders(path + '?_' +
-                                                    Lambda.STERIC_LAMBDA +
-                                                    '/')
-            lambda_folders += self._getLambdaFolders(path + '?_' +
-                                                     Lambda.COULOMBIC_LAMBDA +
-                                                     '/')
-        else:
-            lambda_folders = self._getLambdaFolders(path)
+        print(" - Sampling method: {}".format(self.settings.sampling_method))
+
+        print(" - Retrieving lambda folders from {}".format(self.path))
+
+        lambda_folders = self._getLambdaFolders()
+
+        print("  - Checking lambda folders")
+
+        self._checkLambdaFolders(lambda_folders)
+
+        print("  - {} lambda folders were found".format(len(lambda_folders)))
+
+        print(" - Calculating Free Energy change")
 
         result = 0.
 
@@ -62,12 +69,14 @@ class ExponentialAveraging(Command):
             lamda_average = Calculators.calculateThermodynamicAverage(energies)
             lambda_energy = Calculators.zwanzigEquation(lamda_average)
             lambda_energy *= lambda_folder.direction_factor
-            print("From {} to {}: {}".format(lambda_folder.initial_lambda,
-                                             lambda_folder.final_lambda,
-                                             lambda_energy))
+            print(str(lambda_folder) + ": {}".format(lambda_energy))
             result += lambda_energy
 
-        print(" - Relative Free Energy prediction " +
-              "{:.2f} kcal/mol".format(result))
+        analysis = FEPAnalysis.FEPAnalysis(lambda_folders)
+        e, stdev = analysis.getResults()
 
+        print(" - Relative Free Energy prediction " +
+              "{:.2f} kcal/mol".format(e))
+        print(" - Relative Free Energy error " +
+              "{:.3f} kcal/mol".format(stdev))
         self._finish()

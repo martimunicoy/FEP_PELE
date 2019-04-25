@@ -146,8 +146,8 @@ class UnbounddECalculation(Command):
         factors = []
 
         for shifted_lambda in self.s_method.getShiftedLambdas(lambda_):
-            lambda_folder = str(round(lambda_.value, 3)) + '_' + \
-                str(round(shifted_lambda.value, 3))
+            lambda_folder = str(round(lambda_.value, 5)) + '_' + \
+                str(round(shifted_lambda.value, 5))
 
             self._createAlchemicalTemplate(alchemicalTemplateCreator,
                                            shifted_lambda, constant_lambda)

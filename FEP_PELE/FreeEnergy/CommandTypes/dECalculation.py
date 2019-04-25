@@ -10,7 +10,7 @@ from functools import partial
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
-from FEP_PELE.FreeEnergy.Checkers import checkModelCoords
+from FEP_PELE.FreeEnergy.Analysis.Checkers import checkModelCoords
 from FEP_PELE.FreeEnergy.SamplingMethods.SamplingMethodBuilder import \
     SamplingMethodBuilder
 
@@ -88,6 +88,7 @@ class dECalculation(Command):
         lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
 
         for lambda_ in lambdas:
+
             if (self.checkPoint.check((self.name, str(num) +
                                        str(lambda_.type) +
                                        str(lambda_.value)))):
@@ -131,18 +132,17 @@ class dECalculation(Command):
             # ---------------------------------------------------------------------
 
             for shifted_lambda in self.s_method.getShiftedLambdas(lambda_):
-                print(" - Creating alchemical template")
-                print("  - Applying delta lambda " +
-                      str(round(shifted_lambda.value - lambda_.value, 3)))
+                print(" - Applying delta lambda " +
+                      str(round(shifted_lambda.value - lambda_.value, 5)))
+
+                print("  - Creating alchemical template")
 
                 self._createAlchemicalTemplate(alchemicalTemplateCreator,
                                                shifted_lambda, constant_lambda)
 
-                print("   Done")
-
                 # -----------------------------------------------------------------
 
-                print(" - Minimizing and calculating energetic differences")
+                print("  - Minimizing and calculating energetic differences")
 
                 atoms_to_minimize = self._getAtomIdsToMinimize(
                     alchemicalTemplateCreator)
@@ -153,8 +153,6 @@ class dECalculation(Command):
 
                 with Pool(self.settings.number_of_processors) as pool:
                     pool.map(parallelLoop, simulation.iterateOverReports)
-
-                print("   Done")
 
             self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
                                   str(lambda_.value)))
@@ -188,8 +186,8 @@ class dECalculation(Command):
     def _parallelPELEMinimizerLoop(self, lambda_, shifted_lambda,
                                    atoms_to_minimize, num, report_file):
 
-        lambda_folder = str(round(lambda_.value, 3)) + '_' + \
-            str(round(shifted_lambda.value, 3))
+        lambda_folder = str(round(lambda_.value, 5)) + '_' + \
+            str(round(shifted_lambda.value, 5))
 
         dir_name = self.path
         if (lambda_.type != Lambda.DUAL_LAMBDA):

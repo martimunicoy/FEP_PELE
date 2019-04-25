@@ -68,6 +68,7 @@ class LambdaFolder(object):
 
         self.__direction = co.DIRECTION_LABELS[direction_name]
         self.__direction_factor = co.DIRECTION_FACTORS[direction_name]
+        self.__delta_energies = None
 
     @property
     def path(self):
@@ -93,7 +94,30 @@ class LambdaFolder(object):
     def direction_factor(self):
         return self.__direction_factor
 
+    def __lt__(self, other):
+        if (self.initial_lambda != other.initial_lambda):
+            return self.initial_lambda < other.initial_lambda
+        else:
+            return self.final_lambda < other.final_lambda
+
+    def __eq__(self, other):
+        return self.initial_lambda, self.final_lambda == \
+            other.initial_lambda, other.final_lambda
+
+    def __ne__(self, other):
+        return not(self == other)
+
+    def __hash__(self):
+        return hash((self.initial_lambda, self.final_lambda))
+
+    def __str__(self):
+        return "Lambda Folder from {} to {}".format(self.initial_lambda,
+                                                    self.final_lambda)
+
     def getDeltaEnergyValues(self):
+        if (self.__delta_energies is not None):
+            return self.__delta_energies
+
         files = get_all_files_from_with_extension(self.path, 'out')
 
         energies = []
@@ -104,6 +128,41 @@ class LambdaFolder(object):
                             '_',
                             None)
 
-            energies += report.getMetric(co.PP_DELTA_ENERGIES_CO)
+            report_energies = report.getMetric(co.PP_DELTA_ENERGIES_CO)
+            if (len(report_energies) == 0):
+                print("  - LambdaFolder Warning: found an empty report file " +
+                      "{}".format(report.path))
+                continue
+
+            # Discard first energy
+            report_energies = report_energies[1:]
+
+            energies += report_energies
+
+        self.__delta_energies = energies
 
         return energies
+
+    def getDeltaEnergyValuesByFile(self):
+        files = get_all_files_from_with_extension(self.path, 'out')
+
+        energies_by_file = {}
+
+        for file in files:
+            report = Report(getPathFromFile(file), getFileFromPath(file),
+                            '_'.join(getFileFromPath(file).split('_')[:-1]) +
+                            '_',
+                            None)
+
+            report_energies = report.getMetric(co.PP_DELTA_ENERGIES_CO)
+            if (len(report_energies) == 0):
+                print("  - LambdaFolder Warning: found an empty report file " +
+                      "{}".format(report.path))
+                continue
+
+            # Discard first energy
+            report_energies = report_energies[1:]
+
+            energies_by_file[file] = report_energies
+
+        return energies_by_file

@@ -151,7 +151,7 @@ class Command(object):
         alchemicalTemplateCreator.writeAlchemicalTemplate(path)
         alchemicalTemplateCreator.reset()
 
-    def _getLambdaFolders(self, path):
+    def _getLambdaFoldersFrom(self, path):
         folders = getFoldersInAPath(path)
 
         selected_folders = []
@@ -184,7 +184,7 @@ class Command(object):
 
             selected_folders.append(LambdaFolder(folder))
 
-        return selected_folders
+        return sorted(selected_folders)
 
     def _getAtomsToMinimize(self, alchemicalTemplateCreator):
         # @TODO maybe add their parent atoms as well
@@ -224,4 +224,18 @@ class Command(object):
         printCommandTitle(self._label)
 
     def _finish(self):
+        pass
+
+    def _getLambdaFolders(self):
+        if (self.settings.splitted_lambdas):
+            lambda_folders = self._getLambdaFoldersFrom(
+                self.path + '?_' + Lambda.STERIC_LAMBDA + '/')
+            lambda_folders += self._getLambdaFoldersFrom(
+                self.path + '?_' + Lambda.COULOMBIC_LAMBDA + '/')
+        else:
+            lambda_folders = self._getLambdaFoldersFrom(self.path)
+
+        return lambda_folders
+
+    def _checkLambdaFolders(self, lambda_folders):
         pass

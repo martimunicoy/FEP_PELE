@@ -41,3 +41,28 @@ def calculateMean(values):
         result += float(value)
 
     return result / len(values)
+
+
+def calculateStandardDeviation(values):
+    mean = calculateMean(values)
+
+    summatory = 0.
+
+    for value in values:
+        summatory += math.pow(value - mean, 2)
+
+    return math.sqrt(summatory) / (len(values) - 1)
+
+
+def calculateStandardDeviationOfMean(values):
+    stdev = calculateStandardDeviation(values)
+
+    return stdev / len(values)
+
+
+def squaredSum(values):
+    summatory = 0.
+    for value in values:
+        summatory += math.pow(value, 2)
+
+    return math.sqrt(summatory)
