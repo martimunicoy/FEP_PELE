@@ -1,3 +1,4 @@
 tests
 *.egg-info
 *.pyc
+.DS_Store
