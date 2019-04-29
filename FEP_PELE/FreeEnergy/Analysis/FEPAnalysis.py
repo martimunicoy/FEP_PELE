@@ -9,6 +9,9 @@ from .Calculators import calculateMean
 from .Calculators import squaredSum
 from .Plotters import dEDistributionPlot
 
+from FEP_PELE.FreeEnergy.Constants import SAMPLING_METHODS_DICT as METHODS_DICT
+from FEP_PELE.FreeEnergy.Constants import DIRECTION_LABELS
+
 
 # Script information
 __author__ = "Marti Municoy"
@@ -19,8 +22,9 @@ __email__ = "marti.municoy@bsc.es"
 
 
 class FEPAnalysis(object):
-    def __init__(self, lambda_folders, divisions=10):
+    def __init__(self, lambda_folders, sampling_method, divisions=10):
         self.lambda_folders = lambda_folders
+        self.sampling_method = sampling_method
         self.divisions = divisions
         self.averages = self._calculateAverages()
 
@@ -64,11 +68,40 @@ class FEPAnalysis(object):
 
         return stdevs
 
-    def getResults(self):
+    def _DWSResults(self):
         energies = self.getDeltaEnergies()
         stdevs = self.getStandardDeviations()
 
-        return sum(energies.values()), squaredSum(stdevs.values())
+        return [sum(energies.values()), ], [squaredSum(stdevs.values()), ]
+
+    def _DESResults(self):
+        energies = self.getDeltaEnergies()
+        stdevs = self.getStandardDeviations()
+
+        forward_e = []
+        reverse_e = []
+        forward_sd = []
+        reverse_sd = []
+
+        for lambda_folder in self.lambda_folders:
+            if (lambda_folder.direction ==
+                    DIRECTION_LABELS["FORWARD"]):
+                forward_e.append(energies[lambda_folder])
+                forward_sd.append(stdevs[lambda_folder])
+
+            elif (lambda_folder.direction ==
+                    DIRECTION_LABELS["BACKWARDS"]):
+                reverse_e.append(energies[lambda_folder])
+                reverse_sd.append(stdevs[lambda_folder])
+
+        return [sum(forward_e), sum(reverse_e)], \
+            [squaredSum(forward_e), squaredSum(reverse_e)]
+
+    def getResults(self):
+        if (self.sampling_method == METHODS_DICT["DOUBLE_WIDE"]):
+            return self._DWSResults()
+        elif (self.sampling_method == METHODS_DICT["DOUBLE_ENDED"]):
+            return self._DESResults()
 
     def plotHistogram(self):
         energies = {}
