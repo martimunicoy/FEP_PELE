@@ -12,8 +12,8 @@ __email__ = "marti.municoy@bsc.es"
 
 # Constant definitions
 INITIAL_DUMMY_BOND_EQDIST = float(0.1)
-INITIAL_DUMMY_BOND_SPRING = float(0.0)
-INITIAL_DUMMY_THETA_SPRING = float(0.0)
+INITIAL_DUMMY_BOND_SPRING = float(100.)
+INITIAL_DUMMY_THETA_SPRING = float(10.)
 
 
 # Class definitions

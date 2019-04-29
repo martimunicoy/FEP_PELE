@@ -104,6 +104,11 @@ class AlchemicalTemplateCreator:
                                    _lambda.value, atoms_pairs, bonds_pairs,
                                    thetas_pairs, self.explicit_is_final)
 
+        # @TODO if DUAL_LAMBDA = 0 or both STERIC_LAMBDA and COULOMBIC_LAMBDA
+        # = 0, do not combine parameters but apply original template
+        # The same for the other boundary, lambda = 1. Apply either explicit
+        # or implicit template depending on the case.
+
         if ((_lambda.type == DUAL_LAMBDA) or
                 (_lambda.type == STERIC_LAMBDA)):
             # Set up non bonding parameters
