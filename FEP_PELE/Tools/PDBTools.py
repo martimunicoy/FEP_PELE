@@ -78,15 +78,15 @@ class PDBParser:
                 elif (line_type == "HETATM"):
                     self._processHETATM(line)
                 elif (line_type == "CONECT"):
-                    self._processCONECT()
+                    self._processCONECT(line)
                 elif (line_type == "SEQRES"):
-                    self._processSEQRES()
+                    self._processSEQRES(line)
                 elif (line_type == "MODEL "):
-                    self._processMODEL()
+                    self._processMODEL(line)
                 elif (line_type == "ENDMDL"):
-                    self._processENDMDL()
+                    self._processENDMDL(line)
                 elif (line_type == "REMARK"):
-                    self._processREMARK()
+                    self._processREMARK(line)
                 else:
                     print("PDBParser Warning: unknown line type " +
                           "{}".format(line))
@@ -97,7 +97,7 @@ class PDBParser:
 
         line_type = line[0:3]
 
-        return line_type == "TER"
+        return line_type == "TER" or line_type == "END"
 
     def _processTER(self):
         # Add last link

@@ -251,10 +251,10 @@ class dECalculation(Command):
 
         # Write trajectories and reports
         write_energies_report(path, report_file, energies, rmsds)
-        # join_splitted_models(path, "*-" + report_file.trajectory.name)
+        join_splitted_models(path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
-        # remove_splitted_models(path, "*-" + report_file.trajectory.name)
+        remove_splitted_models(path, "*-" + report_file.trajectory.name)
 
     def _writeRecalculationControlFile(self, template_path, pdb_name,
                                        logfile_name,
