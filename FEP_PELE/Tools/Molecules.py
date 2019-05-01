@@ -29,6 +29,22 @@ class Atom:
         self.element = element
         self.is_heteroatom = False
 
+    def __lt__(self, other):
+        if (self.chain == other.chain):
+            if (self.residue_number == other.residue_number):
+                return self.number < other.number
+            else:
+                return self.residue_number < other.residue_number
+        else:
+            return self.chain < other.chain
+
+    def __eq__(self, other):
+        return self.chain, self.residue_number, self.number == \
+            other.chain, other.residue_number, other.number
+
+    def __ne__(self, other):
+        return not(self == other)
+
 
 class Link:
     def __init__(self, name, number, chain, list_of_atoms):
@@ -48,6 +64,18 @@ class Link:
         else:
             self.iterator_index += 1
             return self.list_of_atoms[self.iterator_index - 1]
+
+    def calculateRMSDWith(self, other):
+        atoms1 = sorted(self.list_of_atoms)
+        atoms2 = sorted(other.list_of_atoms)
+        if (atoms1 != atoms2):
+            raise TypeError("The two links must contain the same atoms")
+
+        rmsd = np.sqrt(np.mean(np.square(
+            [coord1 - coord2 for atom1, atom2 in zip(atoms1, atoms2)
+             for coord1, coord2 in zip(atom1.coords, atom2.coords)])))
+
+        return rmsd
 
 
 class Chain:

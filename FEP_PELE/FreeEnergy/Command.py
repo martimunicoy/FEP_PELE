@@ -208,9 +208,7 @@ class Command(object):
 
         return atoms_to_minimize
 
-    def _getAtomIdsToMinimize(self):
-        atoms_to_minimize = self._getAtomsToMinimize()
-
+    def _getPerturbingLinkId(self):
         if (self.alchemicalTemplateCreator.explicit_is_final):
             pdb_parser = PDBParser(self.settings.final_ligand_pdb)
         else:
@@ -226,7 +224,12 @@ class Command(object):
 
         ligand_link = pdb_parser.links[0]
 
-        link_id = ligand_link.chain + ':' + str(ligand_link.number)
+        return ligand_link.chain + ':' + str(ligand_link.number)
+
+    def _getAtomIdsToMinimize(self):
+        atoms_to_minimize = self._getAtomsToMinimize()
+
+        link_id = self._getPerturbingLinkId()
 
         atom_ids_to_minimize = [link_id + ':' + i for i in atoms_to_minimize]
 

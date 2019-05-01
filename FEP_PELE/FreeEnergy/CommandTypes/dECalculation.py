@@ -30,6 +30,7 @@ from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import writeLambdaTitle
 from FEP_PELE.Utils.InOut import isThereAFile
 
+from FEP_PELE.Tools.PDBTools import PDBParser
 
 # Script information
 __author__ = "Marti Municoy"
@@ -193,6 +194,7 @@ class dECalculation(Command):
         pid = current_process().pid
 
         energies = []
+        rmsds = []
 
         for model_id, active in enumerate(report_file.models):
             pdb_name = self.path + co.MODELS_FOLDER + str(model_id) + \
@@ -239,13 +241,16 @@ class dECalculation(Command):
                 print(output)
                 sys.exit(1)
 
+            rmsd = self._calculateRMSD(pdb_name, trajectory_name)
+            rmsds.append(rmsd)
+
         path = self.path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
             path += str(num) + '_' + lambda_.type + "/"
         path += lambda_folder + "/"
 
         # Write trajectories and reports
-        write_energies_report(path, report_file, energies)
+        write_energies_report(path, report_file, energies, rmsds)
         # join_splitted_models(path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
@@ -265,3 +270,11 @@ class dECalculation(Command):
                             "\"" + '\", \"'.join(atoms_to_minimize) + "\"")
 
         builder.write(output_path)
+
+    def _calculateRMSD(self, pdb_name, trajectory_name):
+        linkId = self._getPerturbingLinkId()
+
+        initial = PDBParser(pdb_name).getLinkWithId(linkId)
+        final = PDBParser(trajectory_name).getLinkWithId(linkId)
+
+        return final.calculateRMSDWith(initial)

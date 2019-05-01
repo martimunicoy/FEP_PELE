@@ -52,6 +52,15 @@ class PDBParser:
     def chains(self):
         return self._chains
 
+    def getLinkWithId(self, id):
+        chain_name, link_number = id.split(':')
+
+        for chain in self.chains:
+            if (chain.name == chain_name):
+                for link in chain.list_of_links:
+                    if (link.number == int(link_number)):
+                        return link
+
     def _processPDB(self):
         with open(self._path, 'r') as file:
             for line in file:
