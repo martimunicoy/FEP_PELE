@@ -15,8 +15,6 @@ from FEP_PELE.FreeEnergy.SamplingMethods.SamplingMethodBuilder import \
     SamplingMethodBuilder
 
 from FEP_PELE.TemplateHandler import Lambda
-from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
-    AlchemicalTemplateCreator
 
 from FEP_PELE.PELETools import PELEConstants as pele_co
 from FEP_PELE.PELETools.SimulationParser import Simulation
@@ -67,22 +65,16 @@ class dECalculation(Command):
     def run(self):
         self._start()
 
-        alchemicalTemplateCreator = AlchemicalTemplateCreator(
-            self.settings.initial_template,
-            self.settings.final_template,
-            self.settings.atom_links)
-
         clear_directory(self.path)
 
         if (self.settings.splitted_lambdas):
-            self._run_with_splitted_lambdas(alchemicalTemplateCreator)
+            self._run_with_splitted_lambdas()
         else:
-            self._run(alchemicalTemplateCreator, self.settings.lambdas,
-                      Lambda.DUAL_LAMBDA)
+            self._run(self.settings.lambdas)
 
         self._finish()
 
-    def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
+    def _run(self, lambdas, lambdas_type=Lambda.DUAL_LAMBDA, num=0,
              constant_lambda=None):
 
         lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
@@ -110,12 +102,10 @@ class dECalculation(Command):
                                     logfile_name="logFile_")
             simulation.getOutputFiles()
 
-            parallelLoop = partial(self._parallelTrajectoryWriterLoop,
-                                   alchemicalTemplateCreator)
-
             with Pool(self.settings.number_of_processors) as pool:
-                models_to_discard = pool.map(parallelLoop,
-                                             simulation.iterateOverReports)
+                models_to_discard = pool.map(
+                    self._parallelTrajectoryWriterLoop,
+                    simulation.iterateOverReports)
 
             # Inactivate bad models
             for model_info_chunks in models_to_discard:
@@ -127,8 +117,6 @@ class dECalculation(Command):
                         if (report.name == model_info[0]):
                             report.models.inactivate(model_info[1])
 
-            print("   Done")
-
             # ---------------------------------------------------------------------
 
             for shifted_lambda in self.s_method.getShiftedLambdas(lambda_):
@@ -137,15 +125,18 @@ class dECalculation(Command):
 
                 print("  - Creating alchemical template")
 
-                self._createAlchemicalTemplate(alchemicalTemplateCreator,
-                                               shifted_lambda, constant_lambda)
+                self._createAlchemicalTemplate(shifted_lambda, constant_lambda)
+
+                """
+                self._createAlchemicalTemplate(shifted_lambda, constant_lambda,
+                                               lambda_)
+                """
 
                 # -----------------------------------------------------------------
 
-                print("  - Minimizing and calculating energetic differences")
+                print("  - Calculating energetic differences")
 
-                atoms_to_minimize = self._getAtomIdsToMinimize(
-                    alchemicalTemplateCreator)
+                atoms_to_minimize = self._getAtomIdsToMinimize()
 
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
                                        lambda_, shifted_lambda,
@@ -161,8 +152,7 @@ class dECalculation(Command):
 
         return []
 
-    def _parallelTrajectoryWriterLoop(self, alchemicalTemplateCreator,
-                                      report_file):
+    def _parallelTrajectoryWriterLoop(self, report_file):
 
         models_to_discard = []
 
@@ -175,7 +165,8 @@ class dECalculation(Command):
 
             if (self.settings.safety_check):
                 model_okay = checkModelCoords(
-                    model_name, alchemicalTemplateCreator.getFragmentAtoms())
+                    model_name,
+                    self.alchemicalTemplateCreator.getFragmentAtoms())
 
                 if (not model_okay):
                     models_to_discard.append((report_file.name, model_id,
@@ -224,37 +215,20 @@ class dECalculation(Command):
                       "\'{}\'".format(pdb_name))
                 continue
 
-            if (isThereAFile(trajectory_name)):
-                self._writeRecalculationControlFile(
-                    self.settings.sp_control_file,
-                    pdb_name,
-                    logfile_name,
-                    trajectory_name,
-                    atoms_to_minimize,
-                    self.path + co.SINGLE_POINT_CF_NAME.format(pid))
+            self._writeRecalculationControlFile(
+                self.settings.pp_control_file,
+                pdb_name,
+                logfile_name,
+                trajectory_name,
+                atoms_to_minimize,
+                self.path + co.SINGLE_POINT_CF_NAME.format(pid))
 
-                try:
-                    output = runner.run(self.path +
-                                        co.SINGLE_POINT_CF_NAME.format(pid))
-                except SystemExit as exception:
-                    print("DoubleWideSampling error: \n" + str(exception))
-                    sys.exit(1)
-
-            else:
-                self._writeRecalculationControlFile(
-                    self.settings.pp_control_file,
-                    pdb_name,
-                    logfile_name,
-                    trajectory_name,
-                    atoms_to_minimize,
-                    self.path + co.POST_PROCESSING_CF_NAME.format(pid))
-
-                try:
-                    output = runner.run(self.path +
-                                        co.POST_PROCESSING_CF_NAME.format(pid))
-                except SystemExit as exception:
-                    print("DoubleWideSampling error: \n" + str(exception))
-                    sys.exit(1)
+            try:
+                output = runner.run(self.path +
+                                    co.SINGLE_POINT_CF_NAME.format(pid))
+            except SystemExit as exception:
+                print("DoubleWideSampling error: \n" + str(exception))
+                sys.exit(1)
 
             for line in output.split('\n'):
                 if line.startswith(pele_co.ENERGY_RESULT_LINE):
@@ -263,6 +237,7 @@ class dECalculation(Command):
             else:
                 print("Error: energy calculation failed")
                 print(output)
+                sys.exit(1)
 
         path = self.path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
@@ -271,10 +246,10 @@ class dECalculation(Command):
 
         # Write trajectories and reports
         write_energies_report(path, report_file, energies)
-        join_splitted_models(path, "*-" + report_file.trajectory.name)
+        # join_splitted_models(path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
-        remove_splitted_models(path, "*-" + report_file.trajectory.name)
+        # remove_splitted_models(path, "*-" + report_file.trajectory.name)
 
     def _writeRecalculationControlFile(self, template_path, pdb_name,
                                        logfile_name,

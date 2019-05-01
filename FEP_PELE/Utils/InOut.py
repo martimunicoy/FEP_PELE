@@ -193,6 +193,7 @@ def writeLambdaTitle(lambda_object):
 
 
 def printCommandTitle(label):
+    print()
     for i in range(0, len(str(label)) + 2):
         print('#', end='')
     print()

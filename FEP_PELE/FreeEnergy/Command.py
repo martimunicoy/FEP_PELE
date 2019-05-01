@@ -18,6 +18,8 @@ from FEP_PELE.Utils.InOut import printCommandTitle
 from FEP_PELE.Utils.InOut import getFoldersInAPath
 from FEP_PELE.Utils.InOut import getLastFolderFromPath
 
+from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
+    AlchemicalTemplateCreator
 from FEP_PELE.TemplateHandler import Lambda
 
 # Script information
@@ -50,7 +52,12 @@ class Command(object):
 
         self.lambdasBuilder = Lambda.LambdasBuilder()
 
-    def _run_with_splitted_lambdas(self, alchemicalTemplateCreator):
+        self.alchemicalTemplateCreator = AlchemicalTemplateCreator(
+            self.settings.initial_template,
+            self.settings.final_template,
+            self.settings.atom_links)
+
+    def _run_with_splitted_lambdas(self):
         output = []
 
         c_lambdas = self.settings.c_lambdas
@@ -60,7 +67,7 @@ class Command(object):
         if (len(s_lambdas) < 1):
             s_lambdas = self.settings.lambdas
 
-        if (alchemicalTemplateCreator.explicit_is_final):
+        if (self.alchemicalTemplateCreator.explicit_is_final):
             # Case where the final atomset contains the initial one.
             # Thus, there are atoms that will be created. The best
             # method is to set from a first beggining coulombic lambda
@@ -68,36 +75,33 @@ class Command(object):
             # partial charge. Until their Lennard Jones parameters
             # are not the final ones, charges will be zero. Then,
             # progressively will be applied to them.
-            self._lambdasCheckUp(s_lambdas, num=1)
+            #self._lambdasCheckUp(s_lambdas, num=1)
             c_lambda = Lambda.Lambda(0, lambda_type=Lambda.COULOMBIC_LAMBDA)
-            output += self._run(alchemicalTemplateCreator, s_lambdas,
-                                Lambda.STERIC_LAMBDA, num=1,
+            output += self._run(s_lambdas, Lambda.STERIC_LAMBDA, num=1,
                                 constant_lambda=c_lambda)
 
-            self._lambdasCheckUp(s_lambdas, num=2)
+            #self._lambdasCheckUp(s_lambdas, num=2)
             s_lambda = Lambda.Lambda(1, lambda_type=Lambda.STERIC_LAMBDA)
-            output += self._run(alchemicalTemplateCreator, c_lambdas,
-                                Lambda.COULOMBIC_LAMBDA, num=2,
+            output += self._run(c_lambdas, Lambda.COULOMBIC_LAMBDA, num=2,
                                 constant_lambda=s_lambda)
         else:
             # Case where the initial atomset contains the final
             # atomset. So, there are atoms that will disappear.
             # In this way, we need to annihilate first coulombic
             # charges, then, we modify Lennard Jones parameters.
-            self._lambdasCheckUp(s_lambdas, num=1)
+            #self._lambdasCheckUp(s_lambdas, num=1)
             s_lambda = Lambda.Lambda(0, lambda_type=Lambda.STERIC_LAMBDA)
-            output += self._run(alchemicalTemplateCreator, c_lambdas,
-                                Lambda.COULOMBIC_LAMBDA, num=1,
+            output += self._run(c_lambdas, Lambda.COULOMBIC_LAMBDA, num=1,
                                 constant_lambda=s_lambda)
 
-            self._lambdasCheckUp(s_lambdas, num=2)
+            #self._lambdasCheckUp(s_lambdas, num=2)
             c_lambda = Lambda.Lambda(1, lambda_type=Lambda.COULOMBIC_LAMBDA)
-            output += self._run(alchemicalTemplateCreator, s_lambdas,
-                                Lambda.STERIC_LAMBDA, num=2,
+            output += self._run(s_lambdas, Lambda.STERIC_LAMBDA, num=2,
                                 constant_lambda=c_lambda)
 
         return output
 
+    """
     def _lambdasCheckUp(self, lambdas, num):
         if ((self.settings.sampling_method ==
              co.SAMPLING_METHODS_DICT["OVERLAP"]) or
@@ -120,6 +124,7 @@ class Command(object):
                   ", required for {} ".format(self.settings.sampling_method) +
                   "sampling")
             lambdas.insert(positions[num - 1], lambda_value)
+    """
 
     def _lambdasCheckUpWithoutEdges(self, lambdas, num):
         edges = (0.0, 1.0)
@@ -135,23 +140,30 @@ class Command(object):
                   "{} sampling".format(self.settings.sampling_method))
             del lambdas[positions[num - 1]]
 
-    def _createAlchemicalTemplate(self, alchemicalTemplateCreator,
-                                  lambda_, constant_lambda):
+    def _createAlchemicalTemplate(self, lambda_, constant_lambda,
+                                  original_lambda=None):
         path = self.settings.general_path + pele_co.HETEROATOMS_TEMPLATE_PATH
 
-        if (alchemicalTemplateCreator.explicit_is_final):
+        if (self.alchemicalTemplateCreator.explicit_is_final):
             path += self.settings.final_template_name
         else:
             path += self.settings.initial_template_name
 
         if (constant_lambda is not None):
-            alchemicalTemplateCreator.applyLambda(constant_lambda)
+            self.alchemicalTemplateCreator.applyLambda(constant_lambda)
 
-        alchemicalTemplateCreator.applyLambda(lambda_)
-        alchemicalTemplateCreator.writeAlchemicalTemplate(path)
-        alchemicalTemplateCreator.reset()
+        change_bonding_params = True
+        if (original_lambda is not None):
+            self.alchemicalTemplateCreator.applyLambda(original_lambda,
+                                                       change_bonding_params)
+            change_bonding_params = False
 
-    def _getLambdaFoldersFrom(self, path):
+        self.alchemicalTemplateCreator.applyLambda(lambda_,
+                                                   change_bonding_params)
+        self.alchemicalTemplateCreator.writeAlchemicalTemplate(path)
+        self.alchemicalTemplateCreator.reset()
+
+    def _getLambdaFoldersFrom(self, path, lambda_type=Lambda.DUAL_LAMBDA):
         folders = getFoldersInAPath(path)
 
         selected_folders = []
@@ -182,13 +194,13 @@ class Command(object):
             if (final_lambda > 1) or (final_lambda < 0):
                 continue
 
-            selected_folders.append(LambdaFolder(folder))
+            selected_folders.append(LambdaFolder(folder,
+                                                 lambda_type=lambda_type))
 
         return sorted(selected_folders)
 
-    def _getAtomsToMinimize(self, alchemicalTemplateCreator):
-        # @TODO maybe add their parent atoms as well
-        fragment_atoms = alchemicalTemplateCreator.getFragmentAtoms()
+    def _getAtomsToMinimize(self):
+        fragment_atoms = self.alchemicalTemplateCreator.getFragmentAtoms()
 
         atoms_to_minimize = []
         for fragment_atom in fragment_atoms:
@@ -196,10 +208,10 @@ class Command(object):
 
         return atoms_to_minimize
 
-    def _getAtomIdsToMinimize(self, alchemicalTemplateCreator):
-        atoms_to_minimize = self._getAtomsToMinimize(alchemicalTemplateCreator)
+    def _getAtomIdsToMinimize(self):
+        atoms_to_minimize = self._getAtomsToMinimize()
 
-        if (alchemicalTemplateCreator.explicit_is_final):
+        if (self.alchemicalTemplateCreator.explicit_is_final):
             pdb_parser = PDBParser(self.settings.final_ligand_pdb)
         else:
             pdb_parser = PDBParser(self.settings.initial_ligand_pdb)
@@ -229,9 +241,11 @@ class Command(object):
     def _getLambdaFolders(self):
         if (self.settings.splitted_lambdas):
             lambda_folders = self._getLambdaFoldersFrom(
-                self.path + '?_' + Lambda.STERIC_LAMBDA + '/')
+                self.path + '?_' + Lambda.STERIC_LAMBDA + '/',
+                lambda_type=Lambda.STERIC_LAMBDA)
             lambda_folders += self._getLambdaFoldersFrom(
-                self.path + '?_' + Lambda.COULOMBIC_LAMBDA + '/')
+                self.path + '?_' + Lambda.COULOMBIC_LAMBDA + '/',
+                lambda_type=Lambda.COULOMBIC_LAMBDA)
         else:
             lambda_folders = self._getLambdaFoldersFrom(self.path)
 

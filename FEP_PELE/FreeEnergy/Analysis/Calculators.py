@@ -21,8 +21,12 @@ def calculateThermodynamicAverage(energies, temperature=300):
     result = 0.
     beta = float(1 / co.BOLTZMANN_CONSTANT_IN_KCAL_MOL / temperature)
 
+    #print(energies)
+
     for energy in energies:
+        #print(math.exp(energy), ' ', end='')
         result += math.exp(- energy * beta)
+    #print()
 
     result /= len(energies)
 

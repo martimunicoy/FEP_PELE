@@ -62,19 +62,12 @@ class ExponentialAveraging(Command):
 
         print(" - Calculating Free Energy change")
 
-        analysis = FEPAnalysis.FEPAnalysis(lambda_folders, divisions=1)
-
-        print(" - Plotting energetic histogram")
-
-        analysis.plotHistogram()
+        analysis = FEPAnalysis.FEPAnalysis(lambda_folders,
+                                           self.settings.sampling_method,
+                                           divisions=1)
 
         print(" - Relative Free Energy results:")
 
-        dE, stdev = analysis.getResults()
-
-        print("  - Prediction " +
-              "{:.2f} kcal/mol".format(dE))
-        print("  - Error " +
-              "{:.3f} kcal/mol".format(stdev))
+        analysis.printResults()
 
         self._finish()
