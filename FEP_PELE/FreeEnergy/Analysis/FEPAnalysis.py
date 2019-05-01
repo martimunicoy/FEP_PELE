@@ -7,6 +7,8 @@ from .Calculators import zwanzigEquation
 from .Calculators import calculateStandardDeviationOfMean
 from .Calculators import calculateMean
 from .Calculators import squaredSum
+from .Plotters import dEDistributionPlot
+
 
 # Script information
 __author__ = "Marti Municoy"
@@ -17,7 +19,7 @@ __email__ = "marti.municoy@bsc.es"
 
 
 class FEPAnalysis(object):
-    def __init__(self, lambda_folders, divisions=2):
+    def __init__(self, lambda_folders, divisions=10):
         self.lambda_folders = lambda_folders
         self.divisions = divisions
         self.averages = self._calculateAverages()
@@ -66,8 +68,13 @@ class FEPAnalysis(object):
         energies = self.getDeltaEnergies()
         stdevs = self.getStandardDeviations()
 
-        for lambda_folder in self.lambda_folders:
-            print(lambda_folder)
-            print(energies[lambda_folder], stdevs[lambda_folder])
-
         return sum(energies.values()), squaredSum(stdevs.values())
+
+    def plotHistogram(self):
+        energies = {}
+        for lambda_folder in self.lambda_folders:
+            key = (lambda_folder.initial_lambda, lambda_folder.final_lambda)
+            energies[key] = lambda_folder.getDeltaEnergyValues()
+
+        plotter = dEDistributionPlot(energies, self.averages)
+        plotter.plotHistogram(20, range=(-2, 2), facecolor='blue', alpha=0.5)

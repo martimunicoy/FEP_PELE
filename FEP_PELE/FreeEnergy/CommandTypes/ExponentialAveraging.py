@@ -62,21 +62,19 @@ class ExponentialAveraging(Command):
 
         print(" - Calculating Free Energy change")
 
-        result = 0.
+        analysis = FEPAnalysis.FEPAnalysis(lambda_folders, divisions=1)
 
-        for lambda_folder in lambda_folders:
-            energies = lambda_folder.getDeltaEnergyValues()
-            lamda_average = Calculators.calculateThermodynamicAverage(energies)
-            lambda_energy = Calculators.zwanzigEquation(lamda_average)
-            lambda_energy *= lambda_folder.direction_factor
-            print(str(lambda_folder) + ": {}".format(lambda_energy))
-            result += lambda_energy
+        print(" - Plotting energetic histogram")
 
-        analysis = FEPAnalysis.FEPAnalysis(lambda_folders)
-        e, stdev = analysis.getResults()
+        analysis.plotHistogram()
 
-        print(" - Relative Free Energy prediction " +
-              "{:.2f} kcal/mol".format(e))
-        print(" - Relative Free Energy error " +
+        print(" - Relative Free Energy results:")
+
+        dE, stdev = analysis.getResults()
+
+        print("  - Prediction " +
+              "{:.2f} kcal/mol".format(dE))
+        print("  - Error " +
               "{:.3f} kcal/mol".format(stdev))
+
         self._finish()
