@@ -6,8 +6,12 @@ import sys
 
 
 # FEP_PELE imports
-from FEP_PELE.Utils.InOut import checkFile
+from .Math import normalize, norm
 from .Molecules import atomBuilder, linkBuilder, chainBuilder
+from .Topology import buildTopologyFromLinkTemplate
+
+from FEP_PELE.Utils.InOut import checkFile
+
 
 # Script information
 __author__ = "Marti Municoy"
@@ -52,6 +56,15 @@ class PDBParser:
     def chains(self):
         return self._chains
 
+    def getLinkWithId(self, id):
+        chain_name, link_number = id.split(':')
+
+        for chain in self.chains:
+            if (chain.name == chain_name):
+                for link in chain.list_of_links:
+                    if (link.number == int(link_number)):
+                        return link
+
     def _processPDB(self):
         with open(self._path, 'r') as file:
             for line in file:
@@ -69,15 +82,15 @@ class PDBParser:
                 elif (line_type == "HETATM"):
                     self._processHETATM(line)
                 elif (line_type == "CONECT"):
-                    self._processCONECT()
+                    self._processCONECT(line)
                 elif (line_type == "SEQRES"):
-                    self._processSEQRES()
+                    self._processSEQRES(line)
                 elif (line_type == "MODEL "):
-                    self._processMODEL()
+                    self._processMODEL(line)
                 elif (line_type == "ENDMDL"):
-                    self._processENDMDL()
+                    self._processENDMDL(line)
                 elif (line_type == "REMARK"):
-                    self._processREMARK()
+                    self._processREMARK(line)
                 else:
                     print("PDBParser Warning: unknown line type " +
                           "{}".format(line))
@@ -88,13 +101,13 @@ class PDBParser:
 
         line_type = line[0:3]
 
-        return line_type == "TER"
+        return line_type == "TER" or line_type == "END"
 
     def _processTER(self):
         # Add last link
         if (len(self.__temporary_atoms_chunk) == 0):
-            print("PDBParser Error: invalid TER location was found")
-            sys.exit(1)
+            print("PDBParser Warning: invalid TER location was found")
+            return
         self._links.append(linkBuilder(self.__temporary_atoms_chunk))
         self.__temporary_atoms_chunk = []
 
@@ -147,7 +160,7 @@ class PDBParser:
 
     def _processHETATM(self, line):
         self._processATOM(line)
-        self._atoms[-1].is_heteroatom = True
+        self._atoms[-1].setAsHeteroatom()
 
     def _processCONECT(self, line):
         pass
@@ -201,6 +214,146 @@ def getAtomName(PDB_line):
                         str(e))
 
     return PDB_line[12:16]
+
+
+class PDBModifier(object):
+    def __init__(self, pdb):
+        self._pdb = pdb
+
+        # In case a link has to be modified
+        self._link = None
+        self._link_template = None
+
+        # General Topology attribute
+        self._topology = None
+
+    @property
+    def pdb(self):
+        return self._pdb
+
+    @property
+    def link(self):
+        return self._link
+
+    @property
+    def link_template(self):
+        return self._link_template
+
+    @property
+    def topology(self):
+        return self._topology
+
+    def setLinkToModify(self, link, link_template):
+        if (link.name != link_template.template_name):
+            raise NameError("Link and Template do not match")
+
+        self._link = link
+        self._link_template = link_template
+        self._topology = buildTopologyFromLinkTemplate(link_template, link)
+
+    def modifyBond(self, bond_to_modify, new_length, fixed_atom=0):
+        first_atom_to_modify = self.link.getAtomWithName(
+            bond_to_modify[bool(fixed_atom == 0)])
+
+        fixed_atom = self.link.getAtomWithName(
+            bond_to_modify[fixed_atom])
+
+        excluded_atoms = [fixed_atom, ]
+
+        vector = normalize(fixed_atom.coords - first_atom_to_modify.coords)[0]
+        length = norm(fixed_atom.coords - first_atom_to_modify.coords) - \
+            new_length
+
+        self._recursiveBondModifier(first_atom_to_modify, excluded_atoms,
+                                    vector, length)
+
+    def _recursiveBondModifier(self, atom, excluded_atoms, vector, length):
+        excluded_atoms.append(atom)
+
+        atom.setNewCoords(atom.coords + vector * length)
+
+        connected_atoms = []
+
+        for child in self.topology.getChildsOfAtom(atom):
+            if (child not in excluded_atoms):
+                connected_atoms.append(child)
+
+        for parent in self.topology.getParentsOfAtom(atom):
+            if (parent not in excluded_atoms):
+                connected_atoms.append(parent)
+
+        for connected_atom in connected_atoms:
+            self._recursiveBondModifier(connected_atom, excluded_atoms, vector,
+                                        length)
+
+    def write(self, output_path):
+        writer = PDBWriter(self.pdb)
+        writer.write(output_path)
+
+
+        """
+        if (self.topology is None):
+            return
+
+        bonds = self.link_template.list_of_bonds
+
+        if (len(bond_to_modify) != 2):
+            raise NameError("Bond {} of incompatible type".format(bond))
+
+        for (index1, index2), bond in bonds.items():
+            name1 = self.link_template.list_of_atoms[index1].pdb_atom_name
+            name2 = self.link_template.list_of_atoms[index2].pdb_atom_name
+
+            if ((name1 in bond_to_modify) and (name2 in bond_to_modify)):
+                distance 
+                break
+        else:
+            raise NameError("Bond {} not found in template".format(bond))
+
+        print(bonds)
+
+        print(bond.atom1, bond.atom2)
+        """
+
+
+class PDBWriter(object):
+    def __init__(self, pdb_object):
+        self._pdb = pdb_object
+
+    def write(self, output_path):
+        with open(output_path, 'w') as f:
+            chains = sorted(self._pdb.chains)
+
+            for chain in chains:
+                links = sorted(chain.list_of_links)
+
+                for link in links:
+                    atoms = sorted(link.list_of_atoms)
+
+                    for atom in atoms:
+                        f.write(self._getAtomLine(atom))
+                f.write(self._getTERLine())
+
+    def _getAtomLine(self, atom):
+        return "{}".format(atom.atom_type) + \
+            "{:5d}".format(atom.number) + ' ' + \
+            "{}".format(atom.atom_name.replace('_', ' ')) + \
+            "{}".format(atom.alt_loc) + \
+            "{}".format(atom.residue_name) + ' ' + \
+            "{}".format(atom.chain) + \
+            "{:4d}".format(atom.residue_number) + \
+            "{}".format(atom.i_code) + '   ' + \
+            "{: 8.3f}".format(atom.coords[0]) + \
+            "{: 8.3f}".format(atom.coords[1]) + \
+            "{: 8.3f}".format(atom.coords[2]) + \
+            "{: 6.2f}".format(atom.occupancy) + \
+            "{: 6.2f}".format(atom.tempFactor) + \
+            '          ' + \
+            "{}".format(atom.element) + \
+            "{}".format(atom.charge) + '\n'
+
+    def _getTERLine(self):
+        return "TER\n"
 
 
 class PDBHandler:

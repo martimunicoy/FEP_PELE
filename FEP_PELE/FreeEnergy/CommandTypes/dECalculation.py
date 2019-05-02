@@ -11,12 +11,8 @@ from functools import partial
 from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.FreeEnergy.Analysis.Checkers import checkModelCoords
-from FEP_PELE.FreeEnergy.SamplingMethods.SamplingMethodBuilder import \
-    SamplingMethodBuilder
 
 from FEP_PELE.TemplateHandler import Lambda
-from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
-    AlchemicalTemplateCreator
 
 from FEP_PELE.PELETools import PELEConstants as pele_co
 from FEP_PELE.PELETools.SimulationParser import Simulation
@@ -32,6 +28,7 @@ from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import writeLambdaTitle
 from FEP_PELE.Utils.InOut import isThereAFile
 
+from FEP_PELE.Tools.PDBTools import PDBParser
 
 # Script information
 __author__ = "Marti Municoy"
@@ -49,40 +46,19 @@ class dECalculation(Command):
         Command.__init__(self, settings)
         self._path = self.settings.calculation_path
 
-        builder = SamplingMethodBuilder(self.settings)
-        self._s_method = builder.createSamplingMethod()
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def path(self):
-        return self._path
-
-    @property
-    def s_method(self):
-        return self._s_method
-
     def run(self):
         self._start()
-
-        alchemicalTemplateCreator = AlchemicalTemplateCreator(
-            self.settings.initial_template,
-            self.settings.final_template,
-            self.settings.atom_links)
 
         clear_directory(self.path)
 
         if (self.settings.splitted_lambdas):
-            self._run_with_splitted_lambdas(alchemicalTemplateCreator)
+            self._run_with_splitted_lambdas()
         else:
-            self._run(alchemicalTemplateCreator, self.settings.lambdas,
-                      Lambda.DUAL_LAMBDA)
+            self._run(self.settings.lambdas)
 
         self._finish()
 
-    def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
+    def _run(self, lambdas, lambdas_type=Lambda.DUAL_LAMBDA, num=0,
              constant_lambda=None):
 
         lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
@@ -110,12 +86,10 @@ class dECalculation(Command):
                                     logfile_name="logFile_")
             simulation.getOutputFiles()
 
-            parallelLoop = partial(self._parallelTrajectoryWriterLoop,
-                                   alchemicalTemplateCreator)
-
             with Pool(self.settings.number_of_processors) as pool:
-                models_to_discard = pool.map(parallelLoop,
-                                             simulation.iterateOverReports)
+                models_to_discard = pool.map(
+                    self._parallelTrajectoryWriterLoop,
+                    simulation.iterateOverReports)
 
             # Inactivate bad models
             for model_info_chunks in models_to_discard:
@@ -127,28 +101,29 @@ class dECalculation(Command):
                         if (report.name == model_info[0]):
                             report.models.inactivate(model_info[1])
 
-            print("   Done")
-
             # ---------------------------------------------------------------------
 
-            for shifted_lambda in self.s_method.getShiftedLambdas(lambda_):
+            for shif_lambda in self.sampling_method.getShiftedLambdas(lambda_):
                 print(" - Applying delta lambda " +
-                      str(round(shifted_lambda.value - lambda_.value, 5)))
+                      str(round(shif_lambda.value - lambda_.value, 5)))
 
                 print("  - Creating alchemical template")
 
-                self._createAlchemicalTemplate(alchemicalTemplateCreator,
-                                               shifted_lambda, constant_lambda)
+                self._createAlchemicalTemplate(shif_lambda, constant_lambda)
+
+                """
+                self._createAlchemicalTemplate(shifted_lambda, constant_lambda,
+                                               lambda_)
+                """
 
                 # -----------------------------------------------------------------
 
-                print("  - Minimizing and calculating energetic differences")
+                print("  - Calculating energetic differences")
 
-                atoms_to_minimize = self._getAtomIdsToMinimize(
-                    alchemicalTemplateCreator)
+                atoms_to_minimize = self._getAtomIdsToMinimize()
 
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       lambda_, shifted_lambda,
+                                       lambda_, shif_lambda,
                                        atoms_to_minimize, num)
 
                 with Pool(self.settings.number_of_processors) as pool:
@@ -161,8 +136,7 @@ class dECalculation(Command):
 
         return []
 
-    def _parallelTrajectoryWriterLoop(self, alchemicalTemplateCreator,
-                                      report_file):
+    def _parallelTrajectoryWriterLoop(self, report_file):
 
         models_to_discard = []
 
@@ -175,7 +149,8 @@ class dECalculation(Command):
 
             if (self.settings.safety_check):
                 model_okay = checkModelCoords(
-                    model_name, alchemicalTemplateCreator.getFragmentAtoms())
+                    model_name,
+                    self.alchemicalTemplateCreator.getFragmentAtoms())
 
                 if (not model_okay):
                     models_to_discard.append((report_file.name, model_id,
@@ -202,6 +177,7 @@ class dECalculation(Command):
         pid = current_process().pid
 
         energies = []
+        rmsds = []
 
         for model_id, active in enumerate(report_file.models):
             pdb_name = self.path + co.MODELS_FOLDER + str(model_id) + \
@@ -224,37 +200,20 @@ class dECalculation(Command):
                       "\'{}\'".format(pdb_name))
                 continue
 
-            if (isThereAFile(trajectory_name)):
-                self._writeRecalculationControlFile(
-                    self.settings.sp_control_file,
-                    pdb_name,
-                    logfile_name,
-                    trajectory_name,
-                    atoms_to_minimize,
-                    self.path + co.SINGLE_POINT_CF_NAME.format(pid))
+            self._writeRecalculationControlFile(
+                self.settings.pp_control_file,
+                pdb_name,
+                logfile_name,
+                trajectory_name,
+                atoms_to_minimize,
+                self.path + co.SINGLE_POINT_CF_NAME.format(pid))
 
-                try:
-                    output = runner.run(self.path +
-                                        co.SINGLE_POINT_CF_NAME.format(pid))
-                except SystemExit as exception:
-                    print("DoubleWideSampling error: \n" + str(exception))
-                    sys.exit(1)
-
-            else:
-                self._writeRecalculationControlFile(
-                    self.settings.pp_control_file,
-                    pdb_name,
-                    logfile_name,
-                    trajectory_name,
-                    atoms_to_minimize,
-                    self.path + co.POST_PROCESSING_CF_NAME.format(pid))
-
-                try:
-                    output = runner.run(self.path +
-                                        co.POST_PROCESSING_CF_NAME.format(pid))
-                except SystemExit as exception:
-                    print("DoubleWideSampling error: \n" + str(exception))
-                    sys.exit(1)
+            try:
+                output = runner.run(self.path +
+                                    co.SINGLE_POINT_CF_NAME.format(pid))
+            except SystemExit as exception:
+                print("DoubleWideSampling error: \n" + str(exception))
+                sys.exit(1)
 
             for line in output.split('\n'):
                 if line.startswith(pele_co.ENERGY_RESULT_LINE):
@@ -263,6 +222,10 @@ class dECalculation(Command):
             else:
                 print("Error: energy calculation failed")
                 print(output)
+                sys.exit(1)
+
+            rmsd = self._calculateRMSD(pdb_name, trajectory_name)
+            rmsds.append(rmsd)
 
         path = self.path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
@@ -270,7 +233,7 @@ class dECalculation(Command):
         path += lambda_folder + "/"
 
         # Write trajectories and reports
-        write_energies_report(path, report_file, energies)
+        write_energies_report(path, report_file, energies, rmsds)
         join_splitted_models(path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
@@ -290,3 +253,11 @@ class dECalculation(Command):
                             "\"" + '\", \"'.join(atoms_to_minimize) + "\"")
 
         builder.write(output_path)
+
+    def _calculateRMSD(self, pdb_name, trajectory_name):
+        linkId = self._getPerturbingLinkId()
+
+        initial = PDBParser(pdb_name).getLinkWithId(linkId)
+        final = PDBParser(trajectory_name).getLinkWithId(linkId)
+
+        return final.calculateRMSDWith(initial)

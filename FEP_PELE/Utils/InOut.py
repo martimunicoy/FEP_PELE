@@ -141,7 +141,7 @@ def write_recalculation_control_file(input_path, pdb_name, logfile_name,
         file.write(filedata)
 
 
-def write_energies_report(output_path, report_file, energies):
+def write_energies_report(output_path, report_file, energies, rmsds):
     tasks = report_file.getMetric(1)
     steps = report_file.getMetric(2)
     accepted_steps = report_file.getMetric(3)
@@ -156,7 +156,8 @@ def write_energies_report(output_path, report_file, energies):
                        str(round(steps[i])) + "    " +
                        str(round(accepted_steps[i])) + "    " +
                        str(round(energy, 2)) + "    " +
-                       str(energy - original_energies[i]) +
+                       str(energy - original_energies[i]) + "    " +
+                       str(round(rmsds[i], 3)) +
                        "\n")
 
 
@@ -193,6 +194,7 @@ def writeLambdaTitle(lambda_object):
 
 
 def printCommandTitle(label):
+    print()
     for i in range(0, len(str(label)) + 2):
         print('#', end='')
     print()

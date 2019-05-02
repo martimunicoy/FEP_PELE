@@ -27,25 +27,30 @@ class DoubleWideSampling(SamplingMethod):
         shifted_lambdas = []
 
         previous_lambda = lambda_.previous_lambda
-        if (previous_lambda is None):
-            shifted_value = float(0.0)
-        else:
-            shifted_value = float(lambda_.value -
-                                  (lambda_.value - previous_lambda.value) /
-                                  2.0)
-
-        shifted_lambdas.append(Lambda.Lambda(shifted_value,
-                                             lambda_type=lambda_.type))
-
         next_lambda = lambda_.next_lambda
-        if (next_lambda is None):
-            shifted_value = float(1.0)
-        else:
-            shifted_value = float(lambda_.value +
-                                  (next_lambda.value - lambda_.value) /
-                                  2.0)
+        if ((previous_lambda is not None) and (next_lambda is not None)):
+            pre_pre_lambda = previous_lambda.previous_lambda
+            if (pre_pre_lambda is not None):
+                shifted_value = float(lambda_.value -
+                                      (lambda_.value - previous_lambda.value) /
+                                      2.0)
+            else:
+                shifted_value = float(lambda_.value -
+                                      (lambda_.value - previous_lambda.value))
 
-        shifted_lambdas.append(Lambda.Lambda(shifted_value,
-                                             lambda_type=lambda_.type))
+            shifted_lambdas.append(Lambda.Lambda(shifted_value,
+                                                 lambda_type=lambda_.type))
+
+            next_next_lambda = next_lambda.next_lambda
+            if (next_next_lambda is not None):
+                shifted_value = float(lambda_.value +
+                                      (next_lambda.value - lambda_.value) /
+                                      2.0)
+            else:
+                shifted_value = float(lambda_.value +
+                                      (next_lambda.value - lambda_.value))
+
+            shifted_lambdas.append(Lambda.Lambda(shifted_value,
+                                                 lambda_type=lambda_.type))
 
         return shifted_lambdas

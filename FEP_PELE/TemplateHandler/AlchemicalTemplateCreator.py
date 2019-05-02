@@ -97,7 +97,7 @@ class AlchemicalTemplateCreator:
 
         return atoms_pairs, bonds_pairs, thetas_pairs
 
-    def applyLambda(self, _lambda):
+    def applyLambda(self, _lambda, change_bonding_params=True):
         atoms_pairs, bonds_pairs, thetas_pairs = self.getFragmentElements()
 
         combiner = CombineLinearly(self.alchemicalTemplate,
@@ -120,9 +120,10 @@ class AlchemicalTemplateCreator:
             combiner.combine_SGBNPType()
 
             # Set up bonding parameters
-            combiner.combine_BondSprings()
-            combiner.combine_BondEqDist()
-            combiner.combine_ThetaSprings()
+            if (change_bonding_params):
+                combiner.combine_BondSprings()
+                combiner.combine_BondEqDist()
+                combiner.combine_ThetaSprings()
 
         if ((_lambda.type == DUAL_LAMBDA) or
                 (_lambda.type == COULOMBIC_LAMBDA)):

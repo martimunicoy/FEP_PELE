@@ -9,9 +9,14 @@ __maintainer__ = "Marti Municoy"
 __email__ = "marti.municoy@bsc.es"
 
 
+# Class definitions
 class SamplingMethod(object):
     def __init__(self, settings):
         self.settings = settings
+
+    @property
+    def name(self):
+        return self._name
 
     def getShiftedLambdas(self, lambda_):
         return self._getShiftedLambdas(lambda_)

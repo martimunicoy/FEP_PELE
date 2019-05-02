@@ -32,6 +32,7 @@ class SolvationFreeEnergyCalculation(Command):
         self._label = co.COMMAND_LABELS_DICT[
             "SOLVATION_FREE_ENERGY_CALCULATION"]
         Command.__init__(self, settings)
+        self._path = ""
 
     @property
     def name(self):

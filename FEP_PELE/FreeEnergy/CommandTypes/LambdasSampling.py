@@ -9,10 +9,9 @@ import random
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.FreeEnergy import Constants as co
+from FEP_PELE.FreeEnergy.Constants import SAMPLING_METHODS_DICT as METHODS_DICT
 
 from FEP_PELE.TemplateHandler import Lambda
-from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
-    AlchemicalTemplateCreator
 
 from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import full_clear_directory
@@ -38,18 +37,10 @@ class LambdasSampling(Command):
         self._name = co.COMMAND_NAMES_DICT["LAMBDAS_SAMPLING"]
         self._label = co.COMMAND_LABELS_DICT["LAMBDAS_SAMPLING"]
         Command.__init__(self, settings)
-
-    @property
-    def name(self):
-        return self._name
+        self._path = self.settings.simulation_path
 
     def run(self):
         self._start()
-
-        alchemicalTemplateCreator = AlchemicalTemplateCreator(
-            self.settings.initial_template,
-            self.settings.final_template,
-            self.settings.atom_links)
 
         if (not self.settings.restart):
             full_clear_directory(self.settings.simulation_path)
@@ -61,19 +52,23 @@ class LambdasSampling(Command):
             clear_directory(self.settings.minimization_path)
 
         if (self.settings.splitted_lambdas):
-            self._run_with_splitted_lambdas(alchemicalTemplateCreator)
+            self._run_with_splitted_lambdas()
         else:
             lambdas = self.settings.lambdas
-            self._lambdasCheckUp(lambdas, num=1)
-            self._lambdasCheckUp(lambdas, num=2)
-            self._run(alchemicalTemplateCreator, lambdas, Lambda.DUAL_LAMBDA)
+            #self._lambdasCheckUp(lambdas, num=1)
+            #self._lambdasCheckUp(lambdas, num=2)
+            self._run(lambdas, Lambda.DUAL_LAMBDA)
 
         self._finish()
 
-    def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
+    def _run(self, lambdas, lambdas_type, num=0,
              constant_lambda=None):
 
         lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
+
+        # In DoubleWide sampling, sampling is not performed on edging lambdas
+        if (self.settings.sampling_method == METHODS_DICT["DOUBLE_WIDE"]):
+            lambdas = lambdas[1:-1]
 
         for lambda_ in lambdas:
             if (self.checkPoint.check((self.name, str(num) +
@@ -85,10 +80,7 @@ class LambdasSampling(Command):
 
             print(" - Creating alchemical template")
 
-            self._createAlchemicalTemplate(alchemicalTemplateCreator,
-                                           lambda_, constant_lambda)
-
-            print("   Done")
+            self._createAlchemicalTemplate(lambda_, constant_lambda)
 
             print(" - Running PELE")
 
@@ -99,8 +91,6 @@ class LambdasSampling(Command):
             print("  - Simulation")
 
             self._simulate(lambda_, num)
-
-            print("   Done")
 
             self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
                                   str(lambda_.value)))
@@ -125,7 +115,7 @@ class LambdasSampling(Command):
             sys.exit(1)
 
     def _simulate(self, lambda_, num):
-        path = self.settings.simulation_path
+        path = self.path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
             path += str(num) + '_' + lambda_.type + "/"
         path += str(lambda_.value) + "/"
@@ -181,5 +171,3 @@ class LambdasSampling(Command):
         print("#################")
         print(" Lambda Sampling")
         print("#################")
-
-        pr

@@ -7,7 +7,9 @@ from FEP_PELE.Utils.InOut import getLastFolderFromPath
 from FEP_PELE.Utils.InOut import getFileFromPath
 from FEP_PELE.Utils.InOut import getPathFromFile
 from FEP_PELE.Utils.InOut import get_all_files_from_with_extension
+
 from FEP_PELE.FreeEnergy import Constants as co
+
 from FEP_PELE.PELETools.SimulationParser import Report
 
 # Script information
@@ -19,7 +21,7 @@ __email__ = "marti.municoy@bsc.es"
 
 
 class LambdaFolder(object):
-    def __init__(self, path):
+    def __init__(self, path, lambda_type=None):
         # Setting default values
         try:
             checkPath(path)
@@ -69,6 +71,7 @@ class LambdaFolder(object):
         self.__direction = co.DIRECTION_LABELS[direction_name]
         self.__direction_factor = co.DIRECTION_FACTORS[direction_name]
         self.__delta_energies = None
+        self.__type = lambda_type
 
     @property
     def path(self):
@@ -94,6 +97,10 @@ class LambdaFolder(object):
     def direction_factor(self):
         return self.__direction_factor
 
+    @property
+    def type(self):
+        return self.__type
+
     def __lt__(self, other):
         if (self.initial_lambda != other.initial_lambda):
             return self.initial_lambda < other.initial_lambda
@@ -101,14 +108,14 @@ class LambdaFolder(object):
             return self.final_lambda < other.final_lambda
 
     def __eq__(self, other):
-        return self.initial_lambda, self.final_lambda == \
-            other.initial_lambda, other.final_lambda
+        return self.type, self.initial_lambda, self.final_lambda == \
+            other.type, other.initial_lambda, other.final_lambda
 
     def __ne__(self, other):
         return not(self == other)
 
     def __hash__(self):
-        return hash((self.initial_lambda, self.final_lambda))
+        return hash((self.type, self.initial_lambda, self.final_lambda))
 
     def __str__(self):
         return "Lambda Folder from {} to {}".format(self.initial_lambda,

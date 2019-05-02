@@ -60,17 +60,19 @@ class dEDistributionPlot(object):
         plt.suptitle(r'$\Delta E$ distribution', fontsize=12)
         plt.title("({} of {})".format(self.current_plot + 1,
                                       self.total_plots), fontsize=10)
-        title = self.ax.text(0.85, 0.85, "",
+        title = self.ax.text(0.85, 0.80, "",
                              bbox={'facecolor': 'w', 'alpha': 0.5, 'pad': 3},
                              transform=self.ax.transAxes, ha="center")
         average_box = self.ax.text(
             0.20, 0.85, "", bbox={'facecolor': 'w', 'alpha': 0.5, 'pad': 3},
             transform=self.ax.transAxes, ha="center", color='red')
 
-        lambda_shift = self.lambdas[self.current_plot]
+        lambda_shift = self.lambdas[self.current_plot][:2]
+        lambda_type = self.lambdas[self.current_plot][2]
 
-        title.set_text(r'$\lambda_{0} =$' +
-                       "{}".format(lambda_shift[0]) + '\n'
+        title.set_text(lambda_type + '\n' +
+                       r'$\lambda_{0} =$' +
+                       "{}".format(lambda_shift[0]) + '\n' +
                        r'$\lambda_{1} =$' +
                        "{}".format(lambda_shift[1]))
         average_box.set_text(r'$\Delta E = $' +

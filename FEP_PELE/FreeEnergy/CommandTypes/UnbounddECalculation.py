@@ -40,40 +40,20 @@ class UnbounddECalculation(Command):
         self._name = co.COMMAND_NAMES_DICT["UNBOUND_DE_CALCULATION"]
         self._label = co.COMMAND_LABELS_DICT["UNBOUND_DE_CALCULATION"]
         Command.__init__(self, settings)
-        self.path = self.settings.calculation_path + 'unbound/'
-
-        builder = SamplingMethodBuilder(self.settings)
-        self._s_method = builder.createSamplingMethod()
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def s_method(self):
-        return self._s_method
+        self._path = self.settings.calculation_path + 'unbound/'
 
     def run(self):
         self._start()
 
         print(" - Calculating energy differences for each delta lambda")
 
-        alchemicalTemplateCreator = AlchemicalTemplateCreator(
-            self.settings.initial_template,
-            self.settings.final_template,
-            self.settings.atom_links)
-
         clear_directory(self.path)
 
         if (self.settings.splitted_lambdas):
-            delta_energies = self._run_with_splitted_lambdas(
-                alchemicalTemplateCreator)
+            delta_energies = self._run_with_splitted_lambdas()
         else:
-            delta_energies = self._run(alchemicalTemplateCreator,
-                                       self.settings.lambdas,
+            delta_energies = self._run(self.settings.lambdas,
                                        Lambda.DUAL_LAMBDA)
-
-        print("   Done")
 
         join_splitted_models(self.path, co.PDB_OUT_NAME.format('*'))
         remove_splitted_models(self.path, co.PDB_OUT_NAME.format('*'))
@@ -85,12 +65,11 @@ class UnbounddECalculation(Command):
 
         self._finish()
 
-    def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
+    def _run(self, lambdas, lambdas_type, num=0,
              constant_lambda=None):
         delta_energies = []
 
-        atoms_to_minimize = self._getAtomIdsToMinimize(
-            alchemicalTemplateCreator)
+        atoms_to_minimize = self._getAtomIdsToMinimize()
 
         runner = PELERunner(self.settings.serial_pele,
                             number_of_processors=1)
@@ -98,27 +77,23 @@ class UnbounddECalculation(Command):
         lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
 
         for lambda_ in lambdas:
-            self._createAlchemicalTemplate(alchemicalTemplateCreator,
-                                           lambda_, constant_lambda)
+            self._createAlchemicalTemplate(lambda_, constant_lambda)
 
-            initial_energy = self._minimize(alchemicalTemplateCreator, runner,
-                                            lambda_)
+            initial_energy = self._minimize(runner, lambda_)
 
             final_energies, factors = self._calculateEnergeticDifference(
-                alchemicalTemplateCreator, lambda_, constant_lambda, num,
-                atoms_to_minimize)
+                lambda_, constant_lambda, num, atoms_to_minimize)
 
             for final_energy, factor in zip(final_energies, factors):
                 delta_energies.append(factor * (final_energy - initial_energy))
 
         return delta_energies
 
-    def _minimize(self, alchemicalTemplateCreator, runner, lambda_):
+    def _minimize(self, runner, lambda_):
 
         clear_directory(self.settings.minimization_path)
 
-        self._writeMinimizationControlFile(alchemicalTemplateCreator,
-                                           lambda_)
+        self._writeMinimizationControlFile(lambda_)
 
         try:
             output = runner.run(self.settings.minimization_path +
@@ -136,8 +111,7 @@ class UnbounddECalculation(Command):
 
         return energy
 
-    def _calculateEnergeticDifference(self, alchemicalTemplateCreator,
-                                      lambda_, constant_lambda, num,
+    def _calculateEnergeticDifference(self, lambda_, constant_lambda, num,
                                       atoms_to_minimize):
         runner = PELERunner(self.settings.serial_pele,
                             number_of_processors=1)
@@ -145,12 +119,11 @@ class UnbounddECalculation(Command):
         energies = []
         factors = []
 
-        for shifted_lambda in self.s_method.getShiftedLambdas(lambda_):
+        for shift_lambda in self.sampling_method.getShiftedLambdas(lambda_):
             lambda_folder = str(round(lambda_.value, 5)) + '_' + \
-                str(round(shifted_lambda.value, 5))
+                str(round(shift_lambda.value, 5))
 
-            self._createAlchemicalTemplate(alchemicalTemplateCreator,
-                                           shifted_lambda, constant_lambda)
+            self._createAlchemicalTemplate(shift_lambda, constant_lambda)
 
             pdb_name = self.path + co.PDB_OUT_NAME.format(str(lambda_.value) +
                                                           'c')
@@ -178,19 +151,18 @@ class UnbounddECalculation(Command):
                 print("Error: energy calculation failed")
                 print(output)
 
-            if (lambda_.value < shifted_lambda.value):
+            if (lambda_.value < shift_lambda.value):
                 factors.append(float(+1.0))
             else:
                 factors.append(float(-1.0))
 
         return energies, factors
 
-    def _writeMinimizationControlFile(self, alchemicalTemplateCreator,
-                                      lambda_):
+    def _writeMinimizationControlFile(self, lambda_):
         cf_creator = ControlFileFromTemplateCreator(
             self.settings.min_control_file)
 
-        if (alchemicalTemplateCreator.explicit_is_final):
+        if (self.alchemicalTemplateCreator.explicit_is_final):
             input_pdb = self.settings.final_ligand_pdb
         else:
             input_pdb = self.settings.initial_ligand_pdb

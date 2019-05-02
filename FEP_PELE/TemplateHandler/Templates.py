@@ -385,6 +385,20 @@ class TemplateOPLS2005:
                             "not found in template " +
                             "{}".format(self.template_name))
 
+    def getBondBetweenAtomNamesPair(self, atom_names_pair):
+        if (len(atom_names_pair) != 2):
+            raise NameError("Bond {} of incompatible type".format(
+                atom_names_pair))
+
+        for (index1, index2), bond in self.list_of_bonds.items():
+            name1 = self.list_of_atoms[index1].pdb_atom_name
+            name2 = self.list_of_atoms[index2].pdb_atom_name
+
+            if ((name1 in atom_names_pair) and (name2 in atom_names_pair)):
+                return bond
+        else:
+            raise NameError("Bond {} not found in template".format(bond))
+
 
 def file_to_list_of_lines(file_path):
     with open(file_path, "r") as template:

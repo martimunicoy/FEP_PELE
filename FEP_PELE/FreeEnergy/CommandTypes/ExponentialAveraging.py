@@ -8,7 +8,6 @@ import sys
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
-from FEP_PELE.FreeEnergy.Analysis import Calculators
 from FEP_PELE.FreeEnergy.Analysis import FEPAnalysis
 
 from FEP_PELE.Utils.InOut import isThereAPath
@@ -30,14 +29,6 @@ class ExponentialAveraging(Command):
         Command.__init__(self, settings)
         self._path = self.settings.calculation_path
 
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def path(self):
-        return self._path
-
     def run(self):
         self._start()
 
@@ -47,8 +38,6 @@ class ExponentialAveraging(Command):
                   "LambdaSimulation and a Sampling command before calling a " +
                   "Calculator command. Check your parameters.")
             sys.exit(1)
-
-        print(" - Sampling method: {}".format(self.settings.sampling_method))
 
         print(" - Retrieving lambda folders from {}".format(self.path))
 
@@ -64,31 +53,8 @@ class ExponentialAveraging(Command):
 
         analysis = FEPAnalysis.FEPAnalysis(lambda_folders,
                                            self.settings.sampling_method,
-                                           divisions=5)
+                                           divisions=1)
 
-        print(" - Plotting energetic histogram")
-
-        analysis.plotHistogram()
-
-        dEs, stdevs = analysis.getResults()
-
-        self._printResults(dEs, stdevs)
+        analysis.printResults()
 
         self._finish()
-
-    def _printResults(self, dEs, stdevs):
-        if (len(dEs) == 1):
-            results_type = ("", "")
-        else:
-            results_type = ("(Direct) ", "(Reverse) ")
-
-        i = 0
-        for dE, stdev in zip(dEs, stdevs):
-            print(" - {}Relative Free Energy results:".format(results_type[i]))
-
-            print("  - Prediction " +
-                  "{:.2f} kcal/mol".format(dE))
-            print("  - Error " +
-                  "{:.3f} kcal/mol".format(stdev))
-
-            i += 1
