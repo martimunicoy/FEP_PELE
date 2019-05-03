@@ -74,23 +74,23 @@ class dECalculation(Command):
 
             clear_directory(self.path + co.MODELS_FOLDER)
 
-            path = self.settings.simulation_path
+            input_path = self.settings.simulation_path
             if (lambda_.type != Lambda.DUAL_LAMBDA):
-                path += str(num) + '_' + lambda_.type + "/"
-            path += str(lambda_.value) + "/"
+                input_path += str(num) + '_' + lambda_.type + "/"
+            input_path += str(lambda_.value) + "/"
 
             print(" - Splitting PELE models")
-            simulation = Simulation(path, sim_type="PELE",
+            simulation = Simulation(input_path, sim_type="PELE",
                                     report_name="report_",
                                     trajectory_name="trajectory_",
                                     logfile_name="logFile_")
             simulation.getOutputFiles()
 
             with Pool(self.settings.number_of_processors) as pool:
-                models_to_discard = pool.map(
-                    self._parallelTrajectoryWriterLoop,
-                    simulation.iterateOverReports)
+                pool.map(self._parallelTrajectoryWriterLoop,
+                         simulation.iterateOverReports)
 
+            """
             # Inactivate bad models
             for model_info_chunks in models_to_discard:
                 if (len(model_info_chunks) == 0):
@@ -100,6 +100,7 @@ class dECalculation(Command):
                     for report in simulation.iterateOverReports:
                         if (report.name == model_info[0]):
                             report.models.inactivate(model_info[1])
+            """
 
             # ---------------------------------------------------------------------
 
@@ -111,9 +112,13 @@ class dECalculation(Command):
 
                 self._createAlchemicalTemplate(shif_lambda, constant_lambda)
 
+                general_path = self._getGeneralPath(lambda_, shif_lambda, num)
+
+                # TODO
                 """
-                self._createAlchemicalTemplate(shifted_lambda, constant_lambda,
-                                               lambda_)
+                print("  - Preparing PDB")
+
+                self._preparePDB(shift_lambda)
                 """
 
                 # -----------------------------------------------------------------
@@ -123,8 +128,8 @@ class dECalculation(Command):
                 atoms_to_minimize = self._getAtomIdsToMinimize()
 
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       lambda_, shif_lambda,
-                                       atoms_to_minimize, num)
+                                       shif_lambda, atoms_to_minimize,
+                                       general_path)
 
                 with Pool(self.settings.number_of_processors) as pool:
                     pool.map(parallelLoop, simulation.iterateOverReports)
@@ -137,8 +142,9 @@ class dECalculation(Command):
         return []
 
     def _parallelTrajectoryWriterLoop(self, report_file):
-
+        """
         models_to_discard = []
+        """
 
         for model_id in range(0, report_file.trajectory.models.number):
 
@@ -147,6 +153,7 @@ class dECalculation(Command):
 
             report_file.trajectory.writeModel(model_id, model_name)
 
+        """
             if (self.settings.safety_check):
                 model_okay = checkModelCoords(
                     model_name,
@@ -157,22 +164,11 @@ class dECalculation(Command):
                                               model_name))
 
         return models_to_discard
+        """
 
-    def _parallelPELEMinimizerLoop(self, lambda_, shifted_lambda,
-                                   atoms_to_minimize, num, report_file):
-
-        lambda_folder = str(round(lambda_.value, 5)) + '_' + \
-            str(round(shifted_lambda.value, 5))
-
-        dir_name = self.path
-        if (lambda_.type != Lambda.DUAL_LAMBDA):
-            dir_name += str(num) + '_' + lambda_.type + "/"
-        dir_name += lambda_folder + "/"
-
-        create_directory(dir_name)
-
-        if (isThereAFile(dir_name + report_file.trajectory.name)):
-            return
+    def _parallelPELEMinimizerLoop(self, shifted_lambda, atoms_to_minimize,
+                                   general_path, report_file):
+        create_directory(general_path)
 
         pid = current_process().pid
 
@@ -180,75 +176,55 @@ class dECalculation(Command):
         rmsds = []
 
         for model_id, active in enumerate(report_file.models):
-            pdb_name = self.path + co.MODELS_FOLDER + str(model_id) + \
-                '-' + report_file.trajectory.name
-
+            # Set initial variables
+            file_name = str(model_id) + '-' + report_file.trajectory.name
+            original_pdb = self.path + co.MODELS_FOLDER + file_name
+            shifted_pdb = general_path + file_name
             logfile_name = self.path + co.LOGFILE_NAME.format(pid)
 
-            trajectory_name = self.path
-            if (lambda_.type != Lambda.DUAL_LAMBDA):
-                trajectory_name += str(num) + '_' + lambda_.type + "/"
-            trajectory_name += lambda_folder + "/" + \
-                str(model_id) + '-' + report_file.trajectory.name
-
+            # Define new PELERunner
             runner = PELERunner(self.settings.serial_pele,
                                 number_of_processors=1)
 
             # In case bad model was previously removed
+            """
             if (not active):
                 print("  - Warning: skipping bad model from path: " +
-                      "\'{}\'".format(pdb_name))
+                      "\'{}\'".format(shifted_pdb))
                 continue
+            """
 
+            # Write recalculation control file
             self._writeRecalculationControlFile(
-                self.settings.pp_control_file,
-                pdb_name,
+                self.settings.sp_control_file,
+                shifted_pdb,
                 logfile_name,
-                trajectory_name,
                 atoms_to_minimize,
                 self.path + co.SINGLE_POINT_CF_NAME.format(pid))
 
-            try:
-                output = runner.run(self.path +
-                                    co.SINGLE_POINT_CF_NAME.format(pid))
-            except SystemExit as exception:
-                print("DoubleWideSampling error: \n" + str(exception))
-                sys.exit(1)
+            # Run PELE and extract energy prediction
+            energies.append(self._getPELEEnergyPrediction(runner, pid))
 
-            for line in output.split('\n'):
-                if line.startswith(pele_co.ENERGY_RESULT_LINE):
-                    energies.append(float(line.strip().split()[-1]))
-                    break
-            else:
-                print("Error: energy calculation failed")
-                print(output)
-                sys.exit(1)
-
-            rmsd = self._calculateRMSD(pdb_name, trajectory_name)
+            # Calculate RMSD between original pdb and shifted one
+            rmsd = self._calculateRMSD(original_pdb, shifted_pdb)
             rmsds.append(rmsd)
 
-        path = self.path
-        if (lambda_.type != Lambda.DUAL_LAMBDA):
-            path += str(num) + '_' + lambda_.type + "/"
-        path += lambda_folder + "/"
-
         # Write trajectories and reports
-        write_energies_report(path, report_file, energies, rmsds)
-        join_splitted_models(path, "*-" + report_file.trajectory.name)
+        write_energies_report(general_path, report_file, energies, rmsds)
+        join_splitted_models(general_path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
-        remove_splitted_models(path, "*-" + report_file.trajectory.name)
+        remove_splitted_models(general_path,
+                               "*-" + report_file.trajectory.name)
 
     def _writeRecalculationControlFile(self, template_path, pdb_name,
-                                       logfile_name,
-                                       trajectory_name, atoms_to_minimize,
+                                       logfile_name, atoms_to_minimize,
                                        output_path):
         builder = ControlFileFromTemplateCreator(template_path)
 
         builder.replaceFlag("INPUT_PDB_NAME", pdb_name)
         builder.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
         builder.replaceFlag("LOG_PATH", logfile_name)
-        builder.replaceFlag("TRAJECTORY_PATH", trajectory_name)
         builder.replaceFlag("ATOMS_TO_MINIMIZE",
                             "\"" + '\", \"'.join(atoms_to_minimize) + "\"")
 
@@ -261,3 +237,31 @@ class dECalculation(Command):
         final = PDBParser(trajectory_name).getLinkWithId(linkId)
 
         return final.calculateRMSDWith(initial)
+
+    def _getGeneralPath(self, lambda_, shifted_lambda, num):
+        general_path = self.path
+        if (lambda_.type != Lambda.DUAL_LAMBDA):
+            general_path += str(num) + '_' + lambda_.type + "/"
+        general_path += self._getLambdaFolderName(lambda_, shifted_lambda)
+        general_path += "/"
+
+        return general_path
+
+    def _getLambdaFolderName(self, lambda_, shifted_lambda):
+        return lambda_.folder_name + '_' + shifted_lambda.folder_name
+
+    def _getPELEEnergyPrediction(self, runner, pid):
+        try:
+            output = runner.run(self.path +
+                                co.SINGLE_POINT_CF_NAME.format(pid))
+        except SystemExit as exception:
+            print("DoubleWideSampling error: \n" + str(exception))
+            sys.exit(1)
+
+        for line in output.split('\n'):
+            if line.startswith(pele_co.ENERGY_RESULT_LINE):
+                return float(line.strip().split()[-1])
+
+        print("Error: energy calculation failed")
+        print(output)
+        sys.exit(1)

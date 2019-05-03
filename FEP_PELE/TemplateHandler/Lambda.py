@@ -63,6 +63,10 @@ class Lambda(object):
     def type(self):
         return self.__lambda_type
 
+    @property
+    def folder_name(self):
+        return str(round(self.value, 5))
+
     def __str__(self):
         return str(self.type) + ' Lambda: ' + str(self.value)
 
