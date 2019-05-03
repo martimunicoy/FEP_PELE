@@ -98,8 +98,8 @@ class FEPAnalysis(object):
                 reverse_e.append(energy)
                 reverse_sd.append(stdev)
 
-        return sum(direct_e.values()), squaredSum(direct_sd.values()), \
-            sum(reverse_e.values()), squaredSum(reverse_sd.values()),
+        return sum(direct_e), squaredSum(direct_sd), \
+            sum(reverse_e), squaredSum(reverse_sd),
 
     def getResults(self):
         if (self.sampling_method == METHODS_DICT["DOUBLE_WIDE"]):
