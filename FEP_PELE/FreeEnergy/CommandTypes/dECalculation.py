@@ -26,7 +26,7 @@ from FEP_PELE.Utils.InOut import write_energies_report
 from FEP_PELE.Utils.InOut import join_splitted_models
 from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import writeLambdaTitle
-from FEP_PELE.Utils.InOut import isThereAFile
+from FEP_PELE.Utils.InOut import copyFile
 
 from FEP_PELE.Tools.PDBTools import PDBParser
 
@@ -114,12 +114,15 @@ class dECalculation(Command):
 
                 general_path = self._getGeneralPath(lambda_, shif_lambda, num)
 
-                # TODO
-                """
                 print("  - Preparing PDB")
 
-                self._preparePDB(shift_lambda)
-                """
+                for report_file in simulation.iterateOverReports:
+                    for model_id in range(
+                            0, report_file.trajectory.models.number):
+                        pdb_path = self.path + co.MODELS_FOLDER + \
+                            str(model_id) + '-' + report_file.trajectory.name
+
+                        self._preparePDB(pdb_path, general_path, shif_lambda)
 
                 # -----------------------------------------------------------------
 
@@ -165,6 +168,36 @@ class dECalculation(Command):
 
         return models_to_discard
         """
+
+    def _preparePDB(self, pdb_path, general_path, shif_lambda):
+        if ((shif_lambda.type == Lambda.DUAL_LAMBDA) or
+                (shif_lambda.type == Lambda.STERIC_LAMBDA)):
+            pdb = PDBParser(pdb_path)
+            link = pdb.getLinkWithId(self._getPerturbingLinkId())
+            bonds, lengths, f_indexes = self._getAllAlchemicalBondsInfo()
+
+        else:
+            copyFile(pdb_path, general_path)
+
+    def _getAllAlchemicalBondsInfo(self):
+        bonds = []
+        lengths = []
+        f_indexes = []
+
+        core_atoms = self.alchemicalTemplate.getCoreAtoms()
+        template_atoms = self.ligand_template.list_of_atoms
+
+        for ((atom_id1, atomi_d2), bond) in self.ligand_template.get_list_of_fragment_bonds():
+            atom1 = template_atoms[atom_id1]
+            atom2 = template_atoms[atom_id2]
+
+            self._getFixedAtom(atom1, atom2, core_atoms)
+
+        return bonds, lengths
+
+    def _getFixedAtom(self, atom1, atom2, core_atoms):
+        dist1 = atom1.calculateMinimumDistanceWithAny(core_atoms)
+
 
     def _parallelPELEMinimizerLoop(self, shifted_lambda, atoms_to_minimize,
                                    general_path, report_file):

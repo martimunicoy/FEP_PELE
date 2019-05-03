@@ -32,6 +32,7 @@ class Atom:
         self.iphis = []
         self.is_unique = bool(is_unique)
         self.is_linker = bool(is_linker)
+        self.dist_to_root = None
 
     def write_resx(self):
         return PATTERN_OPLS2005_RESX_LINE.format(self.atom_id, self.parent_id,
@@ -46,6 +47,9 @@ class Atom:
                                             self.epsilon, self.charge,
                                             self.radnpSGB, self.radnpType,
                                             self.sgbnpGamma, self.sgbnpType)
+
+    def setDistToRoot(self, dist_to_root):
+        self.dist_to_root = dist_to_root
 
 
 class Bond:

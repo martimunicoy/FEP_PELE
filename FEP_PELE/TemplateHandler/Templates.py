@@ -399,6 +399,40 @@ class TemplateOPLS2005:
         else:
             raise NameError("Bond {} not found in template".format(bond))
 
+    def setDistancesToRootAtom(self):
+        atom_pairs = []
+
+        root = self.list_of_atom[0]
+
+        for atom in self.list_of_atoms:
+            atom_pairs.append(atom.parent_id, atom)
+            if (atom.parent_id == 0):
+                root = atom
+
+        # Apply Dijkstra algorithm
+
+        distances = {atom_pair: float('inf') for atom_pair in atom_pairs}
+
+
+
+
+
+
+        parent_ids = [i.parent_id for i in self.list_of_atoms]
+
+        current_parent_id = 0
+        dist_to_root = 0
+
+        for index, parent_id in enumerate(parent_ids):
+            if (parent_id == current_parent_id):
+                if (self.list_of_atoms[index].dist_to_root is None):
+                    self.list_of_atoms[index].setDistToRoot(dist_to_root)
+                else:
+
+
+        for atom in self.list_of_atoms:
+
+
 
 def file_to_list_of_lines(file_path):
     with open(file_path, "r") as template:

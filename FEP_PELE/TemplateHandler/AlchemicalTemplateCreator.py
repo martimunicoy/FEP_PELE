@@ -45,6 +45,10 @@ class AlchemicalTemplateCreator:
 
         return explicit_guess, implicit_guess
 
+    def getCoreAtoms(self):
+        return find_equal_pdb_atom_names(self.explicit_template,
+                                         self.implicit_template)
+
     def getFragmentAtoms(self):
         return detect_fragment_atoms(self.explicit_template,
                                      self.implicit_template)

@@ -19,6 +19,7 @@ from FEP_PELE.Utils.InOut import printCommandTitle
 from FEP_PELE.Utils.InOut import getFoldersInAPath
 from FEP_PELE.Utils.InOut import getLastFolderFromPath
 
+from FEP_PELE.TemplateHandler.Templates import TemplateOPLS2005
 from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
     AlchemicalTemplateCreator
 from FEP_PELE.TemplateHandler import Lambda
@@ -62,6 +63,9 @@ class Command(object):
         builder = SamplingMethodBuilder(settings)
         self._s_method = builder.createSamplingMethod()
 
+        self._ligand_template = \
+            self._alchemicalTemplateCreator.explicit_template
+
     @property
     def settings(self):
         return self._settings
@@ -93,6 +97,10 @@ class Command(object):
     @property
     def path(self):
         return self._path
+
+    @property
+    def ligand_template(self):
+        return self._ligand_template
 
     def _run_with_splitted_lambdas(self):
         output = []

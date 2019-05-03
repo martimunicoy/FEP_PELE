@@ -100,6 +100,16 @@ def copyFile(file_to_copy, destination_path):
                     destination_path + getFileFromPath(file_to_copy))
 
 
+def moveFile(file_to_move, destination_path):
+    try:
+        checkFile(file_to_copy)
+        checkPath(destination_path)
+    except NameError as e:
+        raise NameError("MoveFile Error: " + str(e))
+
+    os.rename(file_to_move, destination_path)
+
+
 def write_lambda_value_to_control_file(input_path, lambda_value,
                                        output_path=None):
     if (output_path is None):
