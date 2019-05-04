@@ -73,7 +73,7 @@ class TemplateOPLS2005:
                                                  index_final=55)
                 z_zmatrix = get_string_from_line(line=line,
                                                  index_initial=56,
-                                                 index_final=67)
+                                                 index_final=68)
                 atom = Atom(atom_id=atom_id, parent_id=parent_id,
                             location=location, atom_type=atom_type,
                             pdb_atom_name=pdb_atom_name, unknown=unknown,
@@ -104,31 +104,31 @@ class TemplateOPLS2005:
                 self.list_of_atoms[id].sigma = float(
                     get_string_from_line(line=line,
                                          index_initial=7,
-                                         index_final=14))
+                                         index_final=15))
                 self.list_of_atoms[id].epsilon = float(
                     get_string_from_line(line=line,
                                          index_initial=15,
-                                         index_final=23))
+                                         index_final=24))
                 self.list_of_atoms[id].charge = float(
                     get_string_from_line(line=line,
                                          index_initial=24,
-                                         index_final=34))
+                                         index_final=35))
                 self.list_of_atoms[id].radnpSGB = float(
                     get_string_from_line(line=line,
                                          index_initial=35,
-                                         index_final=43))
+                                         index_final=44))
                 self.list_of_atoms[id].radnpType = float(
                     get_string_from_line(line=line,
                                          index_initial=44,
-                                         index_final=52))
+                                         index_final=53))
                 self.list_of_atoms[id].sgbnpGamma = float(
                     get_string_from_line(line=line,
                                          index_initial=53,
-                                         index_final=66))
+                                         index_final=67))
                 self.list_of_atoms[id].sgbnpType = float(
                     get_string_from_line(line=line,
                                          index_initial=67,
-                                         index_final=80))
+                                         index_final=81))
             except ValueError:
                 raise ValueError(
                     "Unexpected type in line {}".format(template.index(line)) +
@@ -266,6 +266,15 @@ class TemplateOPLS2005:
                     "Unexpected type in line {}".format(template.index(line)) +
                     " of {}\n{}".format(self.path_to_template, line))
 
+        # Set Topology data to atoms
+        for atom in self.list_of_atoms.values():
+            if (atom.parent_id == 0):
+                atom.is_root = True
+            else:
+                parent = self.list_of_atoms[atom.parent_id]
+                atom.parents.append(parent)
+                parent.childs.append(atom)
+
     def write_header(self):
         return HEADER_OPLS2005 + PATTERN_OPLS2005_RESX_HEADER.format(
             self.template_name, self.num_nbon_params,
@@ -398,40 +407,6 @@ class TemplateOPLS2005:
                 return bond
         else:
             raise NameError("Bond {} not found in template".format(bond))
-
-    def setDistancesToRootAtom(self):
-        atom_pairs = []
-
-        root = self.list_of_atom[0]
-
-        for atom in self.list_of_atoms:
-            atom_pairs.append(atom.parent_id, atom)
-            if (atom.parent_id == 0):
-                root = atom
-
-        # Apply Dijkstra algorithm
-
-        distances = {atom_pair: float('inf') for atom_pair in atom_pairs}
-
-
-
-
-
-
-        parent_ids = [i.parent_id for i in self.list_of_atoms]
-
-        current_parent_id = 0
-        dist_to_root = 0
-
-        for index, parent_id in enumerate(parent_ids):
-            if (parent_id == current_parent_id):
-                if (self.list_of_atoms[index].dist_to_root is None):
-                    self.list_of_atoms[index].setDistToRoot(dist_to_root)
-                else:
-
-
-        for atom in self.list_of_atoms:
-
 
 
 def file_to_list_of_lines(file_path):

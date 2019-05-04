@@ -3,6 +3,7 @@ from .Patterns import PATTERN_OPLS2005_NBON
 from .Patterns import PATTERN_OPLS2005_BOND
 from .Patterns import PATTERN_OPLS2005_THETA
 from .Patterns import PATTERN_OPLS2005_PHI
+from .Patterns import PATTERN_OPLS2005_IPHI
 
 
 class Atom:
@@ -32,7 +33,19 @@ class Atom:
         self.iphis = []
         self.is_unique = bool(is_unique)
         self.is_linker = bool(is_linker)
-        self.dist_to_root = None
+        self.is_root = False
+        self.parents = []
+        self.childs = []
+
+    def __eq__(self, other):
+        return bool((self.atom_id, self.pdb_atom_name) ==
+                    (other.atom_id, other.pdb_atom_name))
+
+    def __ne__(self, other):
+        return not(self == other)
+
+    def __hash__(self):
+        return hash((self.atom_id, self.pdb_atom_name))
 
     def write_resx(self):
         return PATTERN_OPLS2005_RESX_LINE.format(self.atom_id, self.parent_id,
@@ -48,8 +61,47 @@ class Atom:
                                             self.radnpSGB, self.radnpType,
                                             self.sgbnpGamma, self.sgbnpType)
 
-    def setDistToRoot(self, dist_to_root):
-        self.dist_to_root = dist_to_root
+    def calculateMinimumDistanceWithAny(self, list_of_atoms):
+        return self._recursiveDistanceFollowerToAny(list_of_atoms)
+
+    def _recursiveDistanceFollowerToAny(self, list_of_atoms, current_atom=None,
+                                        distance=0, already_visited=None):
+        if (current_atom is None):
+            current_atom = self
+        if (already_visited is None):
+            already_visited = []
+
+        if (current_atom in list_of_atoms):
+            return distance
+
+        already_visited.append(current_atom)
+
+        distance += 1
+
+        # Calculate distance for each child
+        other_distances = []
+
+        for child in current_atom.childs:
+            if (child not in already_visited):
+                other_distances.append(
+                    self._recursiveDistanceFollowerToAny(list_of_atoms,
+                                                         child, distance,
+                                                         already_visited))
+
+        # Calculate distance for each parent
+        for parent in current_atom.parents:
+            if (parent not in already_visited):
+                other_distances.append(
+                    self._recursiveDistanceFollowerToAny(list_of_atoms,
+                                                         parent, distance,
+                                                         already_visited))
+
+        # Filter None values
+        other_distances = list(filter(None.__ne__, other_distances))
+
+        # Return minimum distance
+        if (len(other_distances) > 0):
+            return min(other_distances)
 
 
 class Bond:
@@ -105,7 +157,7 @@ class Phi:
 
     def write_iphi(self):
         if self.improper:
-            return PATTERN_OPLS2005_PHI.format(self.atom1, self.atom2,
-                                               self.atom3, self.atom4,
-                                               self.constant, self.prefactor,
-                                               self.nterm)
+            return PATTERN_OPLS2005_IPHI.format(self.atom1, self.atom2,
+                                                self.atom3, self.atom4,
+                                                self.constant, self.prefactor,
+                                                self.nterm)

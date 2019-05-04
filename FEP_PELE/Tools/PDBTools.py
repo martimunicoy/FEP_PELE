@@ -290,7 +290,6 @@ class PDBModifier(object):
         writer = PDBWriter(self.pdb)
         writer.write(output_path)
 
-
         """
         if (self.topology is None):
             return
@@ -305,7 +304,7 @@ class PDBModifier(object):
             name2 = self.link_template.list_of_atoms[index2].pdb_atom_name
 
             if ((name1 in bond_to_modify) and (name2 in bond_to_modify)):
-                distance 
+                distance
                 break
         else:
             raise NameError("Bond {} not found in template".format(bond))

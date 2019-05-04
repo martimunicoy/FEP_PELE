@@ -245,7 +245,7 @@ class Command(object):
         return sorted(selected_folders)
 
     def _getAtomsToMinimize(self):
-        fragment_atoms = self.alchemicalTemplateCreator.getFragmentAtoms()
+        fragment_atoms = self.alchemicalTemplateCreator.getFragmentAtomNames()
 
         atoms_to_minimize = []
         for fragment_atom in fragment_atoms:

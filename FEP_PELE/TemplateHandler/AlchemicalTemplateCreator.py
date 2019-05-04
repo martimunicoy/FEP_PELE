@@ -46,10 +46,9 @@ class AlchemicalTemplateCreator:
         return explicit_guess, implicit_guess
 
     def getCoreAtoms(self):
-        return find_equal_pdb_atom_names(self.explicit_template,
-                                         self.implicit_template)
+        return findEqualAtoms(self.explicit_template, self.implicit_template)
 
-    def getFragmentAtoms(self):
+    def getFragmentAtomNames(self):
         return detect_fragment_atoms(self.explicit_template,
                                      self.implicit_template)
 
@@ -153,6 +152,13 @@ def detect_fragment_atoms(explicit_template, implicit_template):
         if pdb_atom_name not in core_atoms:
             fragment_atoms.append(atom)
     return fragment_atoms
+
+
+def findEqualAtoms(template1, template2):
+    atoms1 = template1.list_of_atoms.values()
+    atoms2 = template2.list_of_atoms.values()
+
+    return list(set(atoms1).intersection(atoms2))
 
 
 def find_equal_pdb_atom_names(template1, template2):
