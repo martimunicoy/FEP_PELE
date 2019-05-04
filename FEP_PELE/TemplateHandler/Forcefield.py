@@ -32,7 +32,9 @@ class Atom:
         self.iphis = []
         self.is_unique = bool(is_unique)
         self.is_linker = bool(is_linker)
-        self.dist_to_root = None
+        self.is_root = False
+        self.parents = []
+        self.childs = []
 
     def write_resx(self):
         return PATTERN_OPLS2005_RESX_LINE.format(self.atom_id, self.parent_id,
@@ -48,8 +50,25 @@ class Atom:
                                             self.radnpSGB, self.radnpType,
                                             self.sgbnpGamma, self.sgbnpType)
 
-    def setDistToRoot(self, dist_to_root):
-        self.dist_to_root = dist_to_root
+    def calculateMinimumDistanceWithAny(self, list_of_atoms):
+        return self._recursiveDistanceFollowerToAny(list_of_atoms)
+
+    def _recursiveDistanceFollowerToAny(self, list_of_atoms, current_atom=None,
+                                        distance=0, already_visited=[]):
+        if (current_atom is None):
+            current_atom = self
+
+        already_visited.append(current_atom)
+
+        distance += 1
+
+        for child in current_atom.childs:
+            if (child in list_of_atoms):
+                return distance
+            else:
+                if (child not in already_visited):
+                    return self._recursiveDistanceFollowerToAny(
+                        list_of_atoms, child, distance, already_visited)
 
 
 class Bond:
