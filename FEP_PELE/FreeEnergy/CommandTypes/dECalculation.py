@@ -192,6 +192,12 @@ class dECalculation(Command):
 
             modifier.write(general_path + getFileFromPath(pdb_path))
 
+            for bond, length, f_index in zip(bonds, lengths, f_indexes):
+                print("Modifying bond:", bond, length, f_index)
+                modifier.modifyBond(bond, length, f_index)
+
+            modifier.write(general_path + getFileFromPath(pdb_path))
+
         else:
             copyFile(pdb_path, general_path)
 
