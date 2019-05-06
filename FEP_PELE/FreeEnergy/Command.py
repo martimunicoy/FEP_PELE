@@ -122,7 +122,7 @@ class Command(object):
             # to zero to ensure that final atoms will have a null
             # partial charge. Until their Lennard Jones parameters
             # are not the final ones, charges will be zero. Then,
-            # progressively will be applied to them.
+            # progressively, charges will be introduced.
             #self._lambdasCheckUp(s_lambdas, num=1)
             c_lambda = Lambda.Lambda(0, lambda_type=Lambda.COULOMBIC_LAMBDA)
             output += self._run(s_lambdas, Lambda.STERIC_LAMBDA, num=1,
@@ -200,14 +200,7 @@ class Command(object):
         if (constant_lambda is not None):
             self.alchemicalTemplateCreator.applyLambda(constant_lambda)
 
-        change_bonding_params = True
-        if (original_lambda is not None):
-            self.alchemicalTemplateCreator.applyLambda(original_lambda,
-                                                       change_bonding_params)
-            change_bonding_params = False
-
-        self.alchemicalTemplateCreator.applyLambda(lambda_,
-                                                   change_bonding_params)
+        self.alchemicalTemplateCreator.applyLambda(lambda_)
         self.alchemicalTemplateCreator.writeAlchemicalTemplate(path)
         self.alchemicalTemplateCreator.reset()
 
@@ -286,7 +279,8 @@ class Command(object):
     def _getLambdaFolderName(self, lambda_, shifted_lambda):
         return lambda_.folder_name + '_' + shifted_lambda.folder_name
 
-    def _preparePDB(self, pdb_path, general_path, shif_lambda):
+    def _preparePDB(self, pdb_path, general_path, lambda_, shif_lambda,
+                    constant_lambda):
         if ((shif_lambda.type == Lambda.DUAL_LAMBDA) or
                 (shif_lambda.type == Lambda.STERIC_LAMBDA)):
             pdb = PDBParser(pdb_path)
@@ -294,7 +288,8 @@ class Command(object):
             modifier = PDBModifier(pdb)
             modifier.setLinkToModify(link, self.ligand_template)
 
-            bonds, lengths, f_indexes = self._getAllAlchemicalBondsInfo()
+            bonds, lengths, f_indexes = self._getAllAlchemicalBondsInfo(
+                lambda_, constant_lambda, link)
 
             for bond, length, f_index in zip(bonds, lengths, f_indexes):
                 modifier.modifyBond(bond, length, f_index)
@@ -304,7 +299,7 @@ class Command(object):
         else:
             copyFile(pdb_path, general_path)
 
-    def _getAllAlchemicalBondsInfo(self):
+    def _getAllAlchemicalBondsInfo(self, lambda_, constant_lambda, link):
         bonds = []
         lengths = []
         f_indexes = []
@@ -312,7 +307,8 @@ class Command(object):
         core_atoms = self.alchemicalTemplateCreator.getCoreAtoms()
         template_atoms = self.ligand_template.list_of_atoms
 
-        # Bonds need to be retrived from the current template (may be modified)
+        # Bonds need to be retrived from the current template
+        # (may be modified)
         current_template = TemplateOPLS2005(
             self.settings.general_path + pele_co.HETEROATOMS_TEMPLATE_PATH +
             getFileFromPath(self.ligand_template.path_to_template))
@@ -328,8 +324,20 @@ class Command(object):
             # the current state of the bond
             bond = list_of_bonds[(atom_id1, atom_id2)]
 
+            # Get equilibrium length of the original lambda
+            if (constant_lambda is not None):
+                self.alchemicalTemplateCreator.applyLambda(constant_lambda)
+            self.alchemicalTemplateCreator.applyLambda(lambda_)
+            prev_template = self.alchemicalTemplateCreator.alchemicalTemplate
+            prev_bond = prev_template.list_of_bonds[(atom_id1, atom_id2)]
+
+            # Get real length from PDB's link
+            p1 = link.getAtomWithName(atom1.pdb_atom_name)
+            p2 = link.getAtomWithName(atom2.pdb_atom_name)
+            distance = p1.calculateDistanceWith(p2)
+
             bonds.append((atom1.pdb_atom_name, atom2.pdb_atom_name))
-            lengths.append(bond.eq_dist)
+            lengths.append(bond.eq_dist + (distance - prev_bond.eq_dist))
             f_indexes.append(self._getFixedIndex(atom1, atom2, core_atoms))
 
         return bonds, lengths, f_indexes

@@ -15,11 +15,11 @@ class AlchemicalTemplateCreator:
         self.final_template = TemplateOPLS2005(final_template_path)
         self.pdb_atom_name_pairs = pdb_atom_name_pairs
         self.explicit_template, self.implicit_template = \
-            self.dectectExplicitAndImplicitTemplates()
+            self.detectExplicitAndImplicitTemplates()
 
         self.alchemicalTemplate = self.explicit_template
 
-    def dectectExplicitAndImplicitTemplates(self, first_guess=True):
+    def detectExplicitAndImplicitTemplates(self, first_guess=True):
         explicit_guess = self.initial_template
         implicit_guess = self.final_template
         if (not first_guess):
@@ -38,7 +38,7 @@ class AlchemicalTemplateCreator:
                 continue
             else:
                 if (first_guess):
-                    return self.dectectExplicitAndImplicitTemplates(False)
+                    return self.detectExplicitAndImplicitTemplates(False)
                 else:
                     print("Error: there are unique atoms in both states")
                     sys.exit(1)

@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 
 
-# Imports
+# Python imports
 from __future__ import unicode_literals
 import numpy as np
 import sys
+
+
+# FEP_PELE imports
+from FEP_PELE.Tools.Math import norm
 
 
 # Script information
@@ -119,6 +123,9 @@ class Atom:
 
     def setNewCoords(self, coords):
         self._coords = np.array(coords)
+
+    def calculateDistanceWith(self, other):
+        return np.abs(norm(self.coords - other.coords))
 
 
 class Link:

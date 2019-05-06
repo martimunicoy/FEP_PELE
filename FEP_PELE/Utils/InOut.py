@@ -151,11 +151,11 @@ def write_recalculation_control_file(input_path, pdb_name, logfile_name,
         file.write(filedata)
 
 
-def write_energies_report(output_path, report_file, energies, rmsds):
+def write_energies_report(output_path, report_file, energies,
+                          original_energies, rmsds):
     tasks = report_file.getMetric(1)
     steps = report_file.getMetric(2)
     accepted_steps = report_file.getMetric(3)
-    original_energies = report_file.getMetric(4)
 
     with open(output_path + report_file.name, 'w') as file:
         file.write(co.REPORT_FIRST_LINE)
@@ -169,6 +169,13 @@ def write_energies_report(output_path, report_file, energies, rmsds):
                        str(energy - original_energies[i]) + "    " +
                        str(round(rmsds[i], 3)) +
                        "\n")
+
+
+def write_recalculated_energies_report(output_path, energies):
+    with open(output_path, 'w') as file:
+        file.write('realculatedTotalEnergy\n')
+        for energy in energies:
+            file.write(str(energy) + '\n')
 
 
 def join_splitted_models(path, trajectory_name):

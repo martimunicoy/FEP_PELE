@@ -23,6 +23,7 @@ from FEP_PELE.PELETools.ControlFileCreator import \
 from FEP_PELE.Utils.InOut import create_directory
 from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import write_energies_report
+from FEP_PELE.Utils.InOut import write_recalculated_energies_report
 from FEP_PELE.Utils.InOut import join_splitted_models
 from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import writeLambdaTitle
@@ -90,6 +91,19 @@ class dECalculation(Command):
                 pool.map(self._parallelTrajectoryWriterLoop,
                          simulation.iterateOverReports)
 
+            print(" - Calculating original energies")
+
+            clear_directory(self.path + lambda_.folder_name)
+
+            originalEnergiesCalculator = partial(
+                self._parallelOriginalEnergiesCalculator, lambda_)
+
+            with Pool(self.settings.number_of_processors) as pool:
+                pool.map(originalEnergiesCalculator,
+                         simulation.iterateOverReports)
+
+            clear_directory(self.path)
+
             """
             # Inactivate bad models
             for model_info_chunks in models_to_discard:
@@ -123,17 +137,15 @@ class dECalculation(Command):
                         pdb_path = self.path + co.MODELS_FOLDER + \
                             str(model_id) + '-' + report_file.trajectory.name
 
-                        self._preparePDB(pdb_path, general_path, shif_lambda)
+                        self._preparePDB(pdb_path, general_path, lambda_,
+                                         shif_lambda, constant_lambda)
 
                 # -----------------------------------------------------------------
 
                 print("  - Calculating energetic differences")
 
-                atoms_to_minimize = self._getAtomIdsToMinimize()
-
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       shif_lambda, atoms_to_minimize,
-                                       general_path)
+                                       lambda_, shif_lambda, general_path)
 
                 with Pool(self.settings.number_of_processors) as pool:
                     pool.map(parallelLoop, simulation.iterateOverReports)
@@ -170,12 +182,47 @@ class dECalculation(Command):
         return models_to_discard
         """
 
-    def _parallelPELEMinimizerLoop(self, shifted_lambda, atoms_to_minimize,
-                                   general_path, report_file):
+    def _parallelOriginalEnergiesCalculator(self, lambda_, report_file):
+        pid = current_process().pid
+
+        # Define new PELERunner
+        runner = PELERunner(self.settings.serial_pele,
+                            number_of_processors=1)
+
+        # Save original energies
+        energies = []
+
+        for model_id in range(0, report_file.trajectory.models.number):
+
+            model_name = self.path + co.MODELS_FOLDER + str(model_id) + \
+                '-' + report_file.trajectory.name
+
+            logfile_name = self.path + co.LOGFILE_NAME.format(pid)
+
+            # Write recalculation control file
+            self._writeRecalculationControlFile(
+                self.settings.sp_control_file,
+                model_name,
+                logfile_name,
+                self.path + co.SINGLE_POINT_CF_NAME.format(pid))
+
+            # Run PELE and extract energy prediction
+            energies.append(self._getPELEEnergyPrediction(runner, pid))
+
+        write_recalculated_energies_report(self.path + lambda_.folder_name +
+                                           '/' + report_file.name, energies)
+
+        return energies
+
+    def _parallelPELEMinimizerLoop(self, lambda_, shifted_lambda, general_path,
+                                   report_file):
         create_directory(general_path)
 
         pid = current_process().pid
 
+        original_energies = self._getOriginalEnergies(self.path +
+                                                      lambda_.folder_name +
+                                                      '/' + report_file.name)
         energies = []
         rmsds = []
 
@@ -203,7 +250,6 @@ class dECalculation(Command):
                 self.settings.sp_control_file,
                 shifted_pdb,
                 logfile_name,
-                atoms_to_minimize,
                 self.path + co.SINGLE_POINT_CF_NAME.format(pid))
 
             # Run PELE and extract energy prediction
@@ -214,23 +260,31 @@ class dECalculation(Command):
             rmsds.append(rmsd)
 
         # Write trajectories and reports
-        write_energies_report(general_path, report_file, energies, rmsds)
+        write_energies_report(general_path, report_file, energies,
+                              original_energies, rmsds)
         join_splitted_models(general_path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
         remove_splitted_models(general_path,
                                "*-" + report_file.trajectory.name)
 
+    def _getOriginalEnergies(self, path):
+        energies = []
+
+        with open(path, 'r') as file:
+            file.readline()
+            for line in file:
+                energies.append(float(line.strip()))
+
+        return energies
+
     def _writeRecalculationControlFile(self, template_path, pdb_name,
-                                       logfile_name, atoms_to_minimize,
-                                       output_path):
+                                       logfile_name, output_path):
         builder = ControlFileFromTemplateCreator(template_path)
 
         builder.replaceFlag("INPUT_PDB_NAME", pdb_name)
         builder.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
         builder.replaceFlag("LOG_PATH", logfile_name)
-        builder.replaceFlag("ATOMS_TO_MINIMIZE",
-                            "\"" + '\", \"'.join(atoms_to_minimize) + "\"")
 
         builder.write(output_path)
 
@@ -256,7 +310,7 @@ class dECalculation(Command):
             output = runner.run(self.path +
                                 co.SINGLE_POINT_CF_NAME.format(pid))
         except SystemExit as exception:
-            print("DoubleWideSampling error: \n" + str(exception))
+            print("dECalculation error: \n" + str(exception))
             sys.exit(1)
 
         for line in output.split('\n'):
