@@ -13,7 +13,6 @@ from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.FreeEnergy.Analysis.Checkers import checkModelCoords
 
 from FEP_PELE.TemplateHandler import Lambda
-from FEP_PELE.TemplateHandler.Templates import TemplateOPLS2005
 
 from FEP_PELE.PELETools import PELEConstants as pele_co
 from FEP_PELE.PELETools.SimulationParser import Simulation
@@ -27,11 +26,9 @@ from FEP_PELE.Utils.InOut import write_energies_report
 from FEP_PELE.Utils.InOut import join_splitted_models
 from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import writeLambdaTitle
-from FEP_PELE.Utils.InOut import copyFile
-from FEP_PELE.Utils.InOut import getFileFromPath
+
 
 from FEP_PELE.Tools.PDBTools import PDBParser
-from FEP_PELE.Tools.PDBTools import PDBModifier
 
 # Script information
 __author__ = "Marti Municoy"
@@ -173,73 +170,6 @@ class dECalculation(Command):
         return models_to_discard
         """
 
-    def _preparePDB(self, pdb_path, general_path, shif_lambda):
-        if ((shif_lambda.type == Lambda.DUAL_LAMBDA) or
-                (shif_lambda.type == Lambda.STERIC_LAMBDA)):
-            pdb = PDBParser(pdb_path)
-            link = pdb.getLinkWithId(self._getPerturbingLinkId())
-            modifier = PDBModifier(pdb)
-            modifier.setLinkToModify(link, self.ligand_template)
-
-            bonds, lengths, f_indexes = self._getAllAlchemicalBondsInfo()
-            print(bonds)
-            print(lengths)
-            print(f_indexes)
-
-            for bond, length, f_index in zip(bonds, lengths, f_indexes):
-                print("Modifying bond:", bond, length, f_index)
-                modifier.modifyBond(bond, length, f_index)
-
-            modifier.write(general_path + getFileFromPath(pdb_path))
-
-            for bond, length, f_index in zip(bonds, lengths, f_indexes):
-                print("Modifying bond:", bond, length, f_index)
-                modifier.modifyBond(bond, length, f_index)
-
-            modifier.write(general_path + getFileFromPath(pdb_path))
-
-        else:
-            copyFile(pdb_path, general_path)
-
-    def _getAllAlchemicalBondsInfo(self):
-        bonds = []
-        lengths = []
-        f_indexes = []
-
-        core_atoms = self.alchemicalTemplateCreator.getCoreAtoms()
-        template_atoms = self.ligand_template.list_of_atoms
-
-        # Bonds need to be retrived from the current template (may be modified)
-        current_template = TemplateOPLS2005(
-            self.settings.general_path + pele_co.HETEROATOMS_TEMPLATE_PATH +
-            getFileFromPath(self.ligand_template.path_to_template))
-
-        list_of_bonds = current_template.list_of_bonds
-
-        for ((atom_id1, atom_id2), bond) in \
-                self.ligand_template.get_list_of_fragment_bonds():
-            atom1 = template_atoms[atom_id1]
-            atom2 = template_atoms[atom_id2]
-
-            # Select the bond in the template that contains information about
-            # the current state of the bond
-            bond = list_of_bonds[(atom_id1, atom_id2)]
-
-            bonds.append((atom1.pdb_atom_name, atom2.pdb_atom_name))
-            lengths.append(bond.eq_dist)
-            f_indexes.append(self._getFixedIndex(atom1, atom2, core_atoms))
-
-        return bonds, lengths, f_indexes
-
-    def _getFixedIndex(self, atom1, atom2, core_atoms):
-        dist1 = atom1.calculateMinimumDistanceWithAny(core_atoms)
-        dist2 = atom2.calculateMinimumDistanceWithAny(core_atoms)
-
-        if (dist1 < dist2):
-            return 0
-        else:
-            return 1
-
     def _parallelPELEMinimizerLoop(self, shifted_lambda, atoms_to_minimize,
                                    general_path, report_file):
         create_directory(general_path)
@@ -320,9 +250,6 @@ class dECalculation(Command):
         general_path += "/"
 
         return general_path
-
-    def _getLambdaFolderName(self, lambda_, shifted_lambda):
-        return lambda_.folder_name + '_' + shifted_lambda.folder_name
 
     def _getPELEEnergyPrediction(self, runner, pid):
         try:

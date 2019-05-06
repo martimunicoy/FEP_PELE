@@ -8,17 +8,16 @@ import sys
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.FreeEnergy import Constants as co
-from FEP_PELE.FreeEnergy.SamplingMethods.SamplingMethodBuilder import \
-    SamplingMethodBuilder
+from FEP_PELE.FreeEnergy.Constants import SAMPLING_METHODS_DICT as METHODS_DICT
 
 from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import join_splitted_models
 from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import deleteAllFilesWithExtension
+from FEP_PELE.Utils.InOut import getFileFromPath
+from FEP_PELE.Utils.InOut import create_directory
 
 from FEP_PELE.TemplateHandler import Lambda
-from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
-    AlchemicalTemplateCreator
 
 from FEP_PELE.PELETools.PELERunner import PELERunner
 from FEP_PELE.PELETools.ControlFileCreator import \
@@ -50,18 +49,20 @@ class UnbounddECalculation(Command):
         clear_directory(self.path)
 
         if (self.settings.splitted_lambdas):
-            delta_energies = self._run_with_splitted_lambdas()
+            delta_energies_info = self._run_with_splitted_lambdas()
         else:
-            delta_energies = self._run(self.settings.lambdas,
+            delta_energies_info = self._run(self.settings.lambdas,
                                        Lambda.DUAL_LAMBDA)
 
-        join_splitted_models(self.path, co.PDB_OUT_NAME.format('*'))
-        remove_splitted_models(self.path, co.PDB_OUT_NAME.format('*'))
-        deleteAllFilesWithExtension(self.path, 'conf')
-        deleteAllFilesWithExtension(self.path, 'txt')
+        #join_splitted_models(self.path, co.PDB_OUT_NAME.format('*'))
+        #remove_splitted_models(self.path, co.PDB_OUT_NAME.format('*'))
+        #deleteAllFilesWithExtension(self.path, 'conf')
+        #deleteAllFilesWithExtension(self.path, 'txt')
 
-        print(" - Relative Unbound Free Energy prediction " +
-              "{:.2f} kcal/mol".format(sum(delta_energies)))
+        if (self.settings.sampling_method == METHODS_DICT["DOUBLE_WIDE"]):
+            self._printDWSResults(delta_energies_info)
+        elif (self.settings.sampling_method == METHODS_DICT["DOUBLE_ENDED"]):
+            self._printDESResults(delta_energies_info)
 
         self._finish()
 
@@ -79,21 +80,27 @@ class UnbounddECalculation(Command):
         for lambda_ in lambdas:
             self._createAlchemicalTemplate(lambda_, constant_lambda)
 
-            initial_energy = self._minimize(runner, lambda_)
+            initial_energy = self._minimize(runner, lambda_, num)
 
             final_energies, factors = self._calculateEnergeticDifference(
                 lambda_, constant_lambda, num, atoms_to_minimize)
 
             for final_energy, factor in zip(final_energies, factors):
-                delta_energies.append(factor * (final_energy - initial_energy))
+                delta_energies.append((final_energy - initial_energy, factor))
+
+                print(lambda_, factor, final_energy)
 
         return delta_energies
 
-    def _minimize(self, runner, lambda_):
+    def _minimize(self, runner, lambda_, num):
 
         clear_directory(self.settings.minimization_path)
 
-        self._writeMinimizationControlFile(lambda_)
+        out_path = self._getOutPath(lambda_, num)
+
+        create_directory(out_path)
+
+        self._writeMinimizationControlFile(lambda_, out_path)
 
         try:
             output = runner.run(self.settings.minimization_path +
@@ -119,29 +126,32 @@ class UnbounddECalculation(Command):
         energies = []
         factors = []
 
-        for shift_lambda in self.sampling_method.getShiftedLambdas(lambda_):
-            lambda_folder = str(round(lambda_.value, 5)) + '_' + \
-                str(round(shift_lambda.value, 5))
+        out_path = self._getOutPath(lambda_, num)
 
-            self._createAlchemicalTemplate(shift_lambda, constant_lambda)
+        for shif_lambda in self.sampling_method.getShiftedLambdas(lambda_):
+            self._createAlchemicalTemplate(shif_lambda, constant_lambda)
 
-            pdb_name = self.path + co.PDB_OUT_NAME.format(str(lambda_.value) +
-                                                          'c')
+            pdb_path = out_path + co.PDB_OUT_NAME.format(str(lambda_.value) +
+                                                         '0')
 
-            logfile_name = self.path + co.LOGFILE_NAME.format(lambda_folder)
+            logfile_name = out_path + co.LOGFILE_NAME.format(
+                str(lambda_.value) + '_' + str(shif_lambda.value))
 
-            trajectory_name = self.path + co.PDB_OUT_NAME.format(lambda_folder)
+            lambda_folder = out_path + \
+                self._getLambdaFolderName(lambda_, shif_lambda)
+            lambda_folder += '/'
+            clear_directory(lambda_folder)
+
+            self._preparePDB(pdb_path, lambda_folder, shif_lambda)
 
             self._writeRecalculationControlFile(
-                self.settings.pp_control_file,
-                pdb_name,
+                self.settings.sp_control_file,
+                lambda_folder + getFileFromPath(pdb_path),
                 logfile_name,
-                trajectory_name,
-                atoms_to_minimize,
-                self.path + co.SINGLE_POINT_CF_NAME.format(lambda_folder))
+                lambda_folder + co.SINGLE_POINT_CF_NAME.format(''))
 
-            output = runner.run(self.path +
-                                co.SINGLE_POINT_CF_NAME.format(lambda_folder))
+            output = runner.run(lambda_folder +
+                                co.SINGLE_POINT_CF_NAME.format(''))
 
             for line in output.split('\n'):
                 if line.startswith(pele_co.ENERGY_RESULT_LINE):
@@ -151,14 +161,25 @@ class UnbounddECalculation(Command):
                 print("Error: energy calculation failed")
                 print(output)
 
-            if (lambda_.value < shift_lambda.value):
+            if (lambda_.value < shif_lambda.value):
                 factors.append(float(+1.0))
             else:
                 factors.append(float(-1.0))
 
+            deleteAllFilesWithExtension(lambda_folder, 'conf')
+
+        deleteAllFilesWithExtension(out_path, 'txt')
+
         return energies, factors
 
-    def _writeMinimizationControlFile(self, lambda_):
+    def _getOutPath(self, lambda_, num):
+        out_path = self.path
+        if (lambda_.type != Lambda.DUAL_LAMBDA):
+            out_path += str(num) + '_' + lambda_.type + "/"
+
+        return out_path
+
+    def _writeMinimizationControlFile(self, lambda_, out_path):
         cf_creator = ControlFileFromTemplateCreator(
             self.settings.min_control_file)
 
@@ -172,24 +193,44 @@ class UnbounddECalculation(Command):
         cf_creator.replaceFlag("LOG_PATH", self.settings.minimization_path +
                                co.SINGLE_LOGFILE_NAME)
         cf_creator.replaceFlag("TRAJECTORY_PATH",
-                               self.path +
+                               out_path +
                                co.PDB_OUT_NAME.format(str(lambda_.value) +
-                                                      'c'))
+                                                      '0'))
 
         cf_creator.write(self.settings.minimization_path +
                          co.MINIMIZATION_CF_NAME)
 
     def _writeRecalculationControlFile(self, template_path, pdb_name,
                                        logfile_name,
-                                       trajectory_name, atoms_to_minimize,
                                        output_path):
         builder = ControlFileFromTemplateCreator(template_path)
 
         builder.replaceFlag("INPUT_PDB_NAME", pdb_name)
         builder.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
         builder.replaceFlag("LOG_PATH", logfile_name)
-        builder.replaceFlag("TRAJECTORY_PATH", trajectory_name)
-        builder.replaceFlag("ATOMS_TO_MINIMIZE",
-                            "\"" + '\", \"'.join(atoms_to_minimize) + "\"")
 
         builder.write(output_path)
+
+    def _printDESResults(self, delta_energies_info):
+        direct_e = []
+        reverse_e = []
+
+        for delta_energy, factor in delta_energies_info:
+            if (factor > 0):
+                direct_e.append(delta_energy)
+            else:
+                reverse_e.append(delta_energy)
+
+        print("  - (Direct) Prediction " +
+              "{:.2f} kcal/mol".format(sum(direct_e)))
+
+        print("  - (Reverse) Prediction " +
+              "{:.2f} kcal/mol".format(sum(reverse_e)))
+
+    def _printDWSResults(self, delta_energies_info):
+        result = 0.
+        for delta_energy, factor in delta_energies_info:
+            result += factor * delta_energy
+
+        print(" - Relative Unbound Free Energy prediction " +
+              "{:.2f} kcal/mol".format(result))
