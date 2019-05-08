@@ -64,6 +64,8 @@ class dECalculation(Command):
 
         lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
 
+        atoms_to_minimize = self._getAtomIdsToMinimize()
+
         for lambda_ in lambdas:
 
             if (self.checkPoint.check((self.name, str(num) +
@@ -92,7 +94,6 @@ class dECalculation(Command):
                          simulation.iterateOverReports)
 
             print(" - Creating alchemical template")
-            print("  - {}".format(str(lambda_)))
             self._createAlchemicalTemplate(lambda_, constant_lambda)
 
             print(" - Calculating original energies")
@@ -136,26 +137,15 @@ class dECalculation(Command):
                 general_path = self._getGeneralPath(lambda_, num, shif_lambda)
                 clear_directory(general_path)
 
-                print("  - Preparing PDBs")
+                if ((lambdas_type == Lambda.DUAL_LAMBDA) or
+                        (lambdas_type == Lambda.STERIC_LAMBDA)):
 
-                for report_file in simulation.iterateOverReports:
-                    for model_id in range(
-                            0, report_file.trajectory.models.number):
-                        pdb_path = self.path + co.MODELS_FOLDER + \
-                            str(model_id) + '-' + report_file.trajectory.name
-
-                        self._preparePDB(pdb_path, general_path, lambda_,
-                                         shif_lambda, constant_lambda)
+                    self._minimize(simulation, general_path, atoms_to_minimize)
 
                 # -----------------------------------------------------------------
 
-                print("  - Calculating energetic differences")
-
-                parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       lambda_, shif_lambda, general_path, num)
-
-                with Pool(self.settings.number_of_processors) as pool:
-                    pool.map(parallelLoop, simulation.iterateOverReports)
+                self._dECalculation(simulation, lambda_, shif_lambda,
+                                    general_path, num)
 
             self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
                                   str(lambda_.value)))
@@ -163,6 +153,25 @@ class dECalculation(Command):
             clear_directory(self.path)
 
         return []
+
+    def _minimize(self, simulation, general_path, atoms_to_minimize):
+        print("  - Minimizing distances")
+
+        parallelLoop = partial(self._parallelPELEMinimizerLoop, general_path,
+                               atoms_to_minimize)
+
+        with Pool(self.settings.number_of_processors) as pool:
+            pool.map(parallelLoop, simulation.iterateOverReports)
+
+    def _dECalculation(self, simulation, lambda_, shif_lambda, general_path,
+                       num):
+        print("  - Calculating energetic differences")
+
+        parallelLoop = partial(self._parallelPELERecalculatorLoop,
+                               lambda_, shif_lambda, general_path, num)
+
+        with Pool(self.settings.number_of_processors) as pool:
+            pool.map(parallelLoop, simulation.iterateOverReports)
 
     def _parallelTrajectoryWriterLoop(self, report_file):
         """
@@ -210,16 +219,46 @@ class dECalculation(Command):
             self._writeRecalculationControlFile(
                 self.settings.sp_control_file,
                 model_name,
-                logfile_name,
-                self.path + co.SINGLE_POINT_CF_NAME.format(pid))
+                self.path + co.SINGLE_POINT_CF_NAME.format(pid),
+                logfile_name=logfile_name)
 
             # Run PELE and extract energy prediction
             energies.append(self._getPELEEnergyPrediction(runner, pid))
 
         write_recalculated_energies_report(path + report_file.name, energies)
 
-    def _parallelPELEMinimizerLoop(self, lambda_, shifted_lambda, general_path,
-                                   num, report_file):
+    def _parallelPELEMinimizerLoop(self, general_path, atoms_to_minimize,
+                                   report_file):
+        create_directory(general_path)
+
+        pid = current_process().pid
+
+        for model_id, active in enumerate(report_file.models):
+            # Set initial variables
+            file_name = str(model_id) + '-' + report_file.trajectory.name
+            original_pdb = self.path + co.MODELS_FOLDER + file_name
+            logfile_name = self.path + co.LOGFILE_NAME.format(pid)
+            minimized_pdb = general_path + file_name
+
+            # Define new PELERunner
+            runner = PELERunner(self.settings.serial_pele,
+                                number_of_processors=1)
+
+            # Write recalculation control file
+            self._writeRecalculationControlFile(
+                self.settings.pp_control_file,
+                original_pdb,
+                self.path + co.SINGLE_POINT_CF_NAME.format(pid),
+                logfile_name=logfile_name,
+                trajectory_name=minimized_pdb,
+                atoms_to_minimize=atoms_to_minimize)
+
+            runner.run(self.path + co.SINGLE_POINT_CF_NAME.format(pid))
+
+            self._applyMinimizedDistancesTo(original_pdb, minimized_pdb)
+
+    def _parallelPELERecalculatorLoop(self, lambda_, shifted_lambda,
+                                      general_path, num, report_file):
         create_directory(general_path)
 
         pid = current_process().pid
@@ -252,8 +291,8 @@ class dECalculation(Command):
             self._writeRecalculationControlFile(
                 self.settings.sp_control_file,
                 shifted_pdb,
-                logfile_name,
-                self.path + co.SINGLE_POINT_CF_NAME.format(pid))
+                self.path + co.SINGLE_POINT_CF_NAME.format(pid),
+                logfile_name=logfile_name)
 
             # Run PELE and extract energy prediction
             energies.append(self._getPELEEnergyPrediction(runner, pid))
@@ -282,14 +321,22 @@ class dECalculation(Command):
         return energies
 
     def _writeRecalculationControlFile(self, template_path, pdb_name,
-                                       logfile_name, output_path):
-        builder = ControlFileFromTemplateCreator(template_path)
+                                       output_path,
+                                       logfile_name=None,
+                                       trajectory_name=None,
+                                       atoms_to_minimize=None):
+            builder = ControlFileFromTemplateCreator(template_path)
 
-        builder.replaceFlag("INPUT_PDB_NAME", pdb_name)
-        builder.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
-        builder.replaceFlag("LOG_PATH", logfile_name)
-
-        builder.write(output_path)
+            builder.replaceFlag("INPUT_PDB_NAME", pdb_name)
+            builder.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
+            if (logfile_name is not None):
+                builder.replaceFlag("LOG_PATH", logfile_name)
+            if (trajectory_name is not None):
+                builder.replaceFlag("TRAJECTORY_PATH", trajectory_name)
+            if (atoms_to_minimize is not None):
+                builder.replaceFlag("ATOMS_TO_MINIMIZE",
+                                    "\"" + '\", \"'.join(atoms_to_minimize) +
+                                    "\"")
 
     def _calculateRMSD(self, pdb_name, trajectory_name):
         linkId = self._getPerturbingLinkId()

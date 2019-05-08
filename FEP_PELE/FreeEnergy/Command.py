@@ -13,6 +13,7 @@ from .SamplingMethods.SamplingMethodBuilder import SamplingMethodBuilder
 from FEP_PELE.Tools.LambdaFolder import LambdaFolder
 from FEP_PELE.Tools.PDBTools import PDBParser
 from FEP_PELE.Tools.PDBTools import PDBModifier
+from FEP_PELE.Tools.Math import norm
 
 from FEP_PELE.PELETools import PELEConstants as pele_co
 
@@ -282,6 +283,32 @@ class Command(object):
 
     def _getLambdaFolderName(self, lambda_, shifted_lambda):
         return lambda_.folder_name + '_' + shifted_lambda.folder_name
+
+    def _applyMinimizedDistancesTo(self, target_pdb, minimized_pdb):
+        # Read distances on minimized_pdb
+        min_pdb = PDBParser(minimized_pdb)
+        min_link = min_pdb.getLinkWithId(self._getPerturbingLinkId())
+
+        tar_pdb = PDBParser(target_pdb)
+        tar_link = tar_pdb.getLinkWithId(self._getPerturbingLinkId())
+
+        bonds = self.ligand_template.get_list_of_fragment_bonds()
+
+        modifier = PDBModifier(tar_pdb)
+        modifier.setLinkToModify(tar_link, self.ligand_template)
+
+        core_atoms = self.alchemicalTemplateCreator.getCoreAtoms()
+
+        for bond in bonds:
+            atom1 = min_link.getAtomWithName(bond[0])
+            atom2 = min_link.getAtomWithName(bond[1])
+
+            length = norm(atom1.coords - atom2.coords)
+            f_index = self._getFixedIndex(atom1, atom2, core_atoms)
+
+            modifier.modifyBond(bond, length, f_index)
+
+        modifier.write(minimized_pdb)
 
     def _preparePDB(self, pdb_path, general_path, lambda_, shif_lambda,
                     constant_lambda):
