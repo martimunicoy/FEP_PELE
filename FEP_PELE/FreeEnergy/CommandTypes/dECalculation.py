@@ -27,7 +27,7 @@ from FEP_PELE.Utils.InOut import write_recalculated_energies_report
 from FEP_PELE.Utils.InOut import join_splitted_models
 from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import writeLambdaTitle
-
+from FEP_PELE.Utils.InOut import copyFile
 
 from FEP_PELE.Tools.PDBTools import PDBParser
 
@@ -109,10 +109,8 @@ class dECalculation(Command):
                 general_path = self._getGeneralPath(lambda_, num, shif_lambda)
                 clear_directory(general_path)
 
-                if ((lambdas_type == Lambda.DUAL_LAMBDA) or
-                        (lambdas_type == Lambda.STERIC_LAMBDA)):
-
-                    self._minimize(simulation, general_path, atoms_to_minimize)
+                self._minimize(simulation, lambdas_type, general_path,
+                               atoms_to_minimize)
 
                 # -----------------------------------------------------------------
 
@@ -162,14 +160,24 @@ class dECalculation(Command):
             pool.map(originalEnergiesCalculator,
                      simulation.iterateOverReports)
 
-    def _minimize(self, simulation, general_path, atoms_to_minimize):
-        print("  - Minimizing distances")
+    def _minimize(self, simulation, lambdas_type, general_path,
+                  atoms_to_minimize):
+        if ((lambdas_type == Lambda.DUAL_LAMBDA) or
+                (lambdas_type == Lambda.STERIC_LAMBDA)):
+            print(" - Minimizing distances")
 
-        parallelLoop = partial(self._parallelPELEMinimizerLoop, general_path,
-                               atoms_to_minimize)
+            parallelLoop = partial(self._parallelPELEMinimizerLoop,
+                                   general_path, atoms_to_minimize)
 
-        with Pool(self.settings.number_of_processors) as pool:
-            pool.map(parallelLoop, simulation.iterateOverReports)
+            with Pool(self.settings.number_of_processors) as pool:
+                pool.map(parallelLoop, simulation.iterateOverReports)
+
+        else:
+            for report in simulation.iterateOverReports:
+                for model_id in range(0, report.trajectory.models.number):
+                    file_name = str(model_id) + '-' + report.trajectory.name
+                    original_pdb = self.path + co.MODELS_FOLDER + file_name
+                    copyFile(original_pdb, general_path)
 
     def _dECalculation(self, simulation, lambda_, shif_lambda, general_path,
                        num):
@@ -255,12 +263,12 @@ class dECalculation(Command):
             self._writeRecalculationControlFile(
                 self.settings.pp_control_file,
                 original_pdb,
-                self.path + co.SINGLE_POINT_CF_NAME.format(pid),
+                self.path + co.POST_PROCESSING_CF_NAME.format(pid),
                 logfile_name=logfile_name,
                 trajectory_name=minimized_pdb,
                 atoms_to_minimize=atoms_to_minimize)
 
-            runner.run(self.path + co.SINGLE_POINT_CF_NAME.format(pid))
+            runner.run(self.path + co.POST_PROCESSING_CF_NAME.format(pid))
 
             self._applyMinimizedDistancesTo(original_pdb, minimized_pdb)
 

@@ -138,5 +138,5 @@ class FEPAnalysis(object):
             energies[key] = lambda_folder.getDeltaEnergyValues()
 
         plotter = dEDistributionPlot(energies, self.averages)
-        plotter.plotHistogram(20, range=(-0.5, 0.5), facecolor='blue',
+        plotter.plotHistogram(40, range=(-1, 1), facecolor='blue',
                               alpha=0.5)
