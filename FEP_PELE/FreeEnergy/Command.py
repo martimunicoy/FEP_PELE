@@ -190,7 +190,7 @@ class Command(object):
             del lambdas[positions[num - 1]]
 
     def _createAlchemicalTemplate(self, lambda_, constant_lambda):
-        print("  - Creating alchemical template")
+        print(" - Creating alchemical template")
 
         path = self.settings.general_path + pele_co.HETEROATOMS_TEMPLATE_PATH
 
@@ -200,10 +200,10 @@ class Command(object):
             path += self.settings.initial_template_name
 
         if (constant_lambda is not None):
-            print("   - Applying lambda {}".format(str(constant_lambda)))
+            print("  - Applying {}".format(str(constant_lambda)))
             self.alchemicalTemplateCreator.applyLambda(constant_lambda)
 
-        print("   - Applying lambda {}".format(str(lambda_)))
+        print("  - Applying {}".format(str(lambda_)))
         self.alchemicalTemplateCreator.applyLambda(lambda_)
 
         self.alchemicalTemplateCreator.writeAlchemicalTemplate(path)
@@ -292,19 +292,26 @@ class Command(object):
         tar_pdb = PDBParser(target_pdb)
         tar_link = tar_pdb.getLinkWithId(self._getPerturbingLinkId())
 
-        bonds = self.ligand_template.get_list_of_fragment_bonds()
+        template_atoms = self.ligand_template.list_of_atoms
+        fragment_bonds = self.ligand_template.get_list_of_fragment_bonds()
 
         modifier = PDBModifier(tar_pdb)
         modifier.setLinkToModify(tar_link, self.ligand_template)
 
         core_atoms = self.alchemicalTemplateCreator.getCoreAtoms()
 
-        for bond in bonds:
-            atom1 = min_link.getAtomWithName(bond[0])
-            atom2 = min_link.getAtomWithName(bond[1])
+        for ((atom_id1, atom_id2), bond) in fragment_bonds:
+            template_atom1 = template_atoms[atom_id1]
+            template_atom2 = template_atoms[atom_id2]
+
+            atom1 = min_link.getAtomWithName(template_atom1.pdb_atom_name)
+            atom2 = min_link.getAtomWithName(template_atom2.pdb_atom_name)
 
             length = norm(atom1.coords - atom2.coords)
-            f_index = self._getFixedIndex(atom1, atom2, core_atoms)
+            f_index = self._getFixedIndex(template_atom1, template_atom2,
+                                          core_atoms)
+
+            bond = (atom1.atom_name, atom2.atom_name)
 
             modifier.modifyBond(bond, length, f_index)
 

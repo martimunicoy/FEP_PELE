@@ -63,11 +63,9 @@ class dECalculation(Command):
              constant_lambda=None):
 
         lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
-
         atoms_to_minimize = self._getAtomIdsToMinimize()
 
         for lambda_ in lambdas:
-
             if (self.checkPoint.check((self.name, str(num) +
                                        str(lambda_.type) +
                                        str(lambda_.value)))):
@@ -77,40 +75,14 @@ class dECalculation(Command):
 
             clear_directory(self.path + co.MODELS_FOLDER)
 
-            input_path = self.settings.simulation_path
-            if (lambda_.type != Lambda.DUAL_LAMBDA):
-                input_path += str(num) + '_' + lambda_.type + "/"
-            input_path += str(lambda_.value) + "/"
-
             print(" - Splitting PELE models")
-            simulation = Simulation(input_path, sim_type="PELE",
-                                    report_name="report_",
-                                    trajectory_name="trajectory_",
-                                    logfile_name="logFile_")
-            simulation.getOutputFiles()
+            simulation = self._getSimulation(lambda_, num)
 
-            with Pool(self.settings.number_of_processors) as pool:
-                pool.map(self._parallelTrajectoryWriterLoop,
-                         simulation.iterateOverReports)
+            self._splitModels(simulation)
 
-            print(" - Creating alchemical template")
             self._createAlchemicalTemplate(lambda_, constant_lambda)
 
-            print(" - Calculating original energies")
-
-            originals_path = self.path
-            if (lambda_.type != Lambda.DUAL_LAMBDA):
-                originals_path += str(num) + '_' + lambda_.type + "/"
-            originals_path += lambda_.folder_name + '/'
-
-            clear_directory(originals_path)
-
-            originalEnergiesCalculator = partial(
-                self._parallelOriginalEnergiesCalculator, originals_path)
-
-            with Pool(self.settings.number_of_processors) as pool:
-                pool.map(originalEnergiesCalculator,
-                         simulation.iterateOverReports)
+            self._calculateOriginalEnergies(simulation, lambda_, num)
 
             clear_directory(self.path)
 
@@ -153,6 +125,42 @@ class dECalculation(Command):
             clear_directory(self.path)
 
         return []
+
+    def _getSimulation(self, lambda_, num):
+        path = self.settings.simulation_path
+        if (lambda_.type != Lambda.DUAL_LAMBDA):
+            path += str(num) + '_' + lambda_.type + "/"
+        path += str(lambda_.value) + "/"
+
+        simulation = Simulation(path, sim_type="PELE",
+                                report_name="report_",
+                                trajectory_name="trajectory_",
+                                logfile_name="logFile_")
+        simulation.getOutputFiles()
+
+        return simulation
+
+    def _splitModels(self, simulation):
+        with Pool(self.settings.number_of_processors) as pool:
+            pool.map(self._parallelTrajectoryWriterLoop,
+                     simulation.iterateOverReports)
+
+    def _calculateOriginalEnergies(self, simulation, lambda_, num):
+        print(" - Calculating original energies")
+
+        path = self.path
+        if (lambda_.type != Lambda.DUAL_LAMBDA):
+            path += str(num) + '_' + lambda_.type + "/"
+        path += lambda_.folder_name + '/'
+
+        clear_directory(path)
+
+        originalEnergiesCalculator = partial(
+            self._parallelOriginalEnergiesCalculator, path)
+
+        with Pool(self.settings.number_of_processors) as pool:
+            pool.map(originalEnergiesCalculator,
+                     simulation.iterateOverReports)
 
     def _minimize(self, simulation, general_path, atoms_to_minimize):
         print("  - Minimizing distances")
@@ -209,7 +217,6 @@ class dECalculation(Command):
         energies = []
 
         for model_id in range(0, report_file.trajectory.models.number):
-
             model_name = self.path + co.MODELS_FOLDER + str(model_id) + \
                 '-' + report_file.trajectory.name
 
@@ -337,6 +344,8 @@ class dECalculation(Command):
                 builder.replaceFlag("ATOMS_TO_MINIMIZE",
                                     "\"" + '\", \"'.join(atoms_to_minimize) +
                                     "\"")
+
+            builder.write(output_path)
 
     def _calculateRMSD(self, pdb_name, trajectory_name):
         linkId = self._getPerturbingLinkId()
