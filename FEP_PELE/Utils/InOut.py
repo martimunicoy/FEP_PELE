@@ -186,10 +186,8 @@ def join_splitted_models(path, trajectory_name):
             file_name = getFileFromPath(model)
             if ("all" in file_name):
                 continue
-            f.write("MODEL " + str(i + 1) + '\n')
             with open(model) as model_file:
                 f.writelines(model_file.readlines()[:-1])
-            f.write("ENDMDL" + '\n')
 
 
 def remove_splitted_models(path, trajectory_name):

@@ -188,8 +188,9 @@ class Command(object):
                   "{} sampling".format(self.settings.sampling_method))
             del lambdas[positions[num - 1]]
 
-    def _createAlchemicalTemplate(self, lambda_, constant_lambda,
-                                  original_lambda=None):
+    def _createAlchemicalTemplate(self, lambda_, constant_lambda):
+        print("  - Creating alchemical template")
+
         path = self.settings.general_path + pele_co.HETEROATOMS_TEMPLATE_PATH
 
         if (self.alchemicalTemplateCreator.explicit_is_final):
@@ -198,9 +199,12 @@ class Command(object):
             path += self.settings.initial_template_name
 
         if (constant_lambda is not None):
+            print("   - Applying lambda {}".format(str(constant_lambda)))
             self.alchemicalTemplateCreator.applyLambda(constant_lambda)
 
+        print("   - Applying lambda {}".format(str(lambda_)))
         self.alchemicalTemplateCreator.applyLambda(lambda_)
+
         self.alchemicalTemplateCreator.writeAlchemicalTemplate(path)
         self.alchemicalTemplateCreator.reset()
 
@@ -324,6 +328,7 @@ class Command(object):
             # the current state of the bond
             bond = list_of_bonds[(atom_id1, atom_id2)]
 
+            """
             # Get equilibrium length of the original lambda
             if (constant_lambda is not None):
                 self.alchemicalTemplateCreator.applyLambda(constant_lambda)
@@ -335,10 +340,14 @@ class Command(object):
             p1 = link.getAtomWithName(atom1.pdb_atom_name)
             p2 = link.getAtomWithName(atom2.pdb_atom_name)
             distance = p1.calculateDistanceWith(p2)
+            """
 
             bonds.append((atom1.pdb_atom_name, atom2.pdb_atom_name))
-            lengths.append(bond.eq_dist + (distance - prev_bond.eq_dist))
+            #lengths.append(bond.eq_dist + (distance - prev_bond.eq_dist))
+            lengths.append(bond.eq_dist)
             f_indexes.append(self._getFixedIndex(atom1, atom2, core_atoms))
+
+            self.alchemicalTemplateCreator.reset()
 
         return bonds, lengths, f_indexes
 

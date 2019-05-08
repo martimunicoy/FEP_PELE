@@ -91,12 +91,21 @@ class dECalculation(Command):
                 pool.map(self._parallelTrajectoryWriterLoop,
                          simulation.iterateOverReports)
 
+            print(" - Creating alchemical template")
+            print("  - {}".format(str(lambda_)))
+            self._createAlchemicalTemplate(lambda_, constant_lambda)
+
             print(" - Calculating original energies")
 
-            clear_directory(self.path + lambda_.folder_name)
+            originals_path = self.path
+            if (lambda_.type != Lambda.DUAL_LAMBDA):
+                originals_path += str(num) + '_' + lambda_.type + "/"
+            originals_path += lambda_.folder_name + '/'
+
+            clear_directory(originals_path)
 
             originalEnergiesCalculator = partial(
-                self._parallelOriginalEnergiesCalculator, lambda_)
+                self._parallelOriginalEnergiesCalculator, originals_path)
 
             with Pool(self.settings.number_of_processors) as pool:
                 pool.map(originalEnergiesCalculator,
@@ -122,14 +131,12 @@ class dECalculation(Command):
                 print(" - Applying delta lambda " +
                       str(round(shif_lambda.value - lambda_.value, 5)))
 
-                print("  - Creating alchemical template")
-
                 self._createAlchemicalTemplate(shif_lambda, constant_lambda)
 
-                general_path = self._getGeneralPath(lambda_, shif_lambda, num)
+                general_path = self._getGeneralPath(lambda_, num, shif_lambda)
                 clear_directory(general_path)
 
-                print("  - Preparing PDB")
+                print("  - Preparing PDBs")
 
                 for report_file in simulation.iterateOverReports:
                     for model_id in range(
@@ -145,7 +152,7 @@ class dECalculation(Command):
                 print("  - Calculating energetic differences")
 
                 parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                       lambda_, shif_lambda, general_path)
+                                       lambda_, shif_lambda, general_path, num)
 
                 with Pool(self.settings.number_of_processors) as pool:
                     pool.map(parallelLoop, simulation.iterateOverReports)
@@ -182,7 +189,7 @@ class dECalculation(Command):
         return models_to_discard
         """
 
-    def _parallelOriginalEnergiesCalculator(self, lambda_, report_file):
+    def _parallelOriginalEnergiesCalculator(self, path, report_file):
         pid = current_process().pid
 
         # Define new PELERunner
@@ -197,7 +204,7 @@ class dECalculation(Command):
             model_name = self.path + co.MODELS_FOLDER + str(model_id) + \
                 '-' + report_file.trajectory.name
 
-            logfile_name = self.path + co.LOGFILE_NAME.format(pid)
+            logfile_name = path + co.LOGFILE_NAME.format(pid)
 
             # Write recalculation control file
             self._writeRecalculationControlFile(
@@ -209,20 +216,16 @@ class dECalculation(Command):
             # Run PELE and extract energy prediction
             energies.append(self._getPELEEnergyPrediction(runner, pid))
 
-        write_recalculated_energies_report(self.path + lambda_.folder_name +
-                                           '/' + report_file.name, energies)
-
-        return energies
+        write_recalculated_energies_report(path + report_file.name, energies)
 
     def _parallelPELEMinimizerLoop(self, lambda_, shifted_lambda, general_path,
-                                   report_file):
+                                   num, report_file):
         create_directory(general_path)
 
         pid = current_process().pid
 
-        original_energies = self._getOriginalEnergies(self.path +
-                                                      lambda_.folder_name +
-                                                      '/' + report_file.name)
+        original_energies = self._getOriginalEnergies(
+            self._getGeneralPath(lambda_, num) + report_file.name)
         energies = []
         rmsds = []
 
@@ -296,11 +299,14 @@ class dECalculation(Command):
 
         return final.calculateRMSDWith(initial)
 
-    def _getGeneralPath(self, lambda_, shifted_lambda, num):
+    def _getGeneralPath(self, lambda_, num, shifted_lambda=None):
         general_path = self.path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
             general_path += str(num) + '_' + lambda_.type + "/"
-        general_path += self._getLambdaFolderName(lambda_, shifted_lambda)
+        if (shifted_lambda is not None):
+            general_path += self._getLambdaFolderName(lambda_, shifted_lambda)
+        else:
+            general_path += lambda_.folder_name
         general_path += "/"
 
         return general_path
