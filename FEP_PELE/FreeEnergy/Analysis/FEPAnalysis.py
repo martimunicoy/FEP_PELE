@@ -48,7 +48,8 @@ class FEPAnalysis(object):
             for sub_energy in sub_energies:
                 average = zwanzigEquation(
                     calculateThermodynamicAverage(sub_energy,
-                                                  self.temperature))
+                                                  self.temperature),
+                    self.temperature)
                 averages[lambda_folder].append(average)
 
         return averages

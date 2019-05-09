@@ -124,12 +124,10 @@ class Command(object):
             # partial charge. Until their Lennard Jones parameters
             # are not the final ones, charges will be zero. Then,
             # progressively, charges will be introduced.
-            #self._lambdasCheckUp(s_lambdas, num=1)
             c_lambda = Lambda.Lambda(0, lambda_type=Lambda.COULOMBIC_LAMBDA)
             output += self._run(s_lambdas, Lambda.STERIC_LAMBDA, num=1,
                                 constant_lambda=c_lambda)
 
-            #self._lambdasCheckUp(s_lambdas, num=2)
             s_lambda = Lambda.Lambda(1, lambda_type=Lambda.STERIC_LAMBDA)
             output += self._run(c_lambdas, Lambda.COULOMBIC_LAMBDA, num=2,
                                 constant_lambda=s_lambda)
@@ -138,59 +136,18 @@ class Command(object):
             # atomset. So, there are atoms that will disappear.
             # In this way, we need to annihilate first coulombic
             # charges, then, we modify Lennard Jones parameters.
-            #self._lambdasCheckUp(s_lambdas, num=1)
             s_lambda = Lambda.Lambda(0, lambda_type=Lambda.STERIC_LAMBDA)
             output += self._run(c_lambdas, Lambda.COULOMBIC_LAMBDA, num=1,
                                 constant_lambda=s_lambda)
 
-            #self._lambdasCheckUp(s_lambdas, num=2)
             c_lambda = Lambda.Lambda(1, lambda_type=Lambda.COULOMBIC_LAMBDA)
             output += self._run(s_lambdas, Lambda.STERIC_LAMBDA, num=2,
                                 constant_lambda=c_lambda)
 
         return output
 
-    """
-    def _lambdasCheckUp(self, lambdas, num):
-        if ((self.settings.sampling_method ==
-             co.SAMPLING_METHODS_DICT["OVERLAP"]) or
-            (self.settings.sampling_method ==
-             co.SAMPLING_METHODS_DICT["DOUBLE_ENDED"])):
-            self._lambdasCheckUpWithEdges(lambdas, num)
-        else:
-            self._lambdasCheckUpWithoutEdges(lambdas, num)
-
-    def _lambdasCheckUpWithEdges(self, lambdas, num):
-        edges = (0.0, 1.0)
-        indexes = (0, -1)
-        positions = (0, len(lambdas))
-
-        lambda_ = lambdas[indexes[num - 1]]
-        lambda_value = edges[num - 1]
-
-        if (lambda_ != lambda_value):
-            print("  - Warning: adding extra lambda {}".format(lambda_value) +
-                  ", required for {} ".format(self.settings.sampling_method) +
-                  "sampling")
-            lambdas.insert(positions[num - 1], lambda_value)
-    """
-
-    def _lambdasCheckUpWithoutEdges(self, lambdas, num):
-        edges = (0.0, 1.0)
-        indexes = (0, -1)
-        positions = (0, len(lambdas) - 1)
-
-        lambda_ = lambdas[indexes[num - 1]]
-        lambda_value = edges[num - 1]
-
-        if (lambda_ == lambda_value):
-            print("  - Warning: removing extra lambda " +
-                  "{}, not compatible with ".format(lambda_value) +
-                  "{} sampling".format(self.settings.sampling_method))
-            del lambdas[positions[num - 1]]
-
-    def _createAlchemicalTemplate(self, lambda_, constant_lambda):
-        print(" - Creating alchemical template")
+    def _createAlchemicalTemplate(self, lambda_, constant_lambda, gap=''):
+        print("{} - Creating alchemical template".format(gap))
 
         path = self.settings.general_path + pele_co.HETEROATOMS_TEMPLATE_PATH
 
@@ -362,22 +319,7 @@ class Command(object):
             # the current state of the bond
             bond = list_of_bonds[(atom_id1, atom_id2)]
 
-            """
-            # Get equilibrium length of the original lambda
-            if (constant_lambda is not None):
-                self.alchemicalTemplateCreator.applyLambda(constant_lambda)
-            self.alchemicalTemplateCreator.applyLambda(lambda_)
-            prev_template = self.alchemicalTemplateCreator.alchemicalTemplate
-            prev_bond = prev_template.list_of_bonds[(atom_id1, atom_id2)]
-
-            # Get real length from PDB's link
-            p1 = link.getAtomWithName(atom1.pdb_atom_name)
-            p2 = link.getAtomWithName(atom2.pdb_atom_name)
-            distance = p1.calculateDistanceWith(p2)
-            """
-
             bonds.append((atom1.pdb_atom_name, atom2.pdb_atom_name))
-            #lengths.append(bond.eq_dist + (distance - prev_bond.eq_dist))
             lengths.append(bond.eq_dist)
             f_indexes.append(self._getFixedIndex(atom1, atom2, core_atoms))
 

@@ -235,6 +235,9 @@ class Settings(object):
 
             value = self._getCommaSeparatedList(key, value)
             self._checkListOfLambdas(key, value)
+            if (self.__default_lambdas):
+                self.__lambdas = []
+                self.__default_lambdas = False
 
             for lambda_chunk in value:
                 for lambda_value in lambda_chunk.split(','):
@@ -251,6 +254,9 @@ class Settings(object):
 
             value = self._getCommaSeparatedList(key, value)
             self._checkListOfLambdas(key, value)
+            if (self.__default_lambdas):
+                self.__lambdas = []
+                self.__default_lambdas = False
 
             for lambda_chunk in value:
                 for lambda_value in lambda_chunk.split(','):

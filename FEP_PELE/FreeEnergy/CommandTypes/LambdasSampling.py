@@ -68,7 +68,10 @@ class LambdasSampling(Command):
 
         # In DoubleWide sampling, sampling is not performed on edging lambdas
         if (self.settings.sampling_method == METHODS_DICT["DOUBLE_WIDE"]):
-            lambdas = lambdas[1:-1]
+            if (len(lambdas) > 1):
+                lambdas = lambdas[1:-1]
+            else:
+                return []
 
         for lambda_ in lambdas:
             if (self.checkPoint.check((self.name, str(num) +

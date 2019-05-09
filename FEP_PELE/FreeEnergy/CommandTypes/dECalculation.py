@@ -104,18 +104,19 @@ class dECalculation(Command):
                 print(" - Applying delta lambda " +
                       str(round(shif_lambda.value - lambda_.value, 5)))
 
-                self._createAlchemicalTemplate(shif_lambda, constant_lambda)
+                self._createAlchemicalTemplate(shif_lambda, constant_lambda,
+                                               gap=' ')
 
                 general_path = self._getGeneralPath(lambda_, num, shif_lambda)
                 clear_directory(general_path)
 
                 self._minimize(simulation, lambdas_type, general_path,
-                               atoms_to_minimize)
+                               atoms_to_minimize, gap=' ')
 
                 # -----------------------------------------------------------------
 
                 self._dECalculation(simulation, lambda_, shif_lambda,
-                                    general_path, num)
+                                    general_path, num, gap=' ')
 
             self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
                                   str(lambda_.value)))
@@ -143,8 +144,8 @@ class dECalculation(Command):
             pool.map(self._parallelTrajectoryWriterLoop,
                      simulation.iterateOverReports)
 
-    def _calculateOriginalEnergies(self, simulation, lambda_, num):
-        print(" - Calculating original energies")
+    def _calculateOriginalEnergies(self, simulation, lambda_, num, gap=''):
+        print("{} - Calculating original energies".format(gap))
 
         path = self.path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
@@ -161,10 +162,10 @@ class dECalculation(Command):
                      simulation.iterateOverReports)
 
     def _minimize(self, simulation, lambdas_type, general_path,
-                  atoms_to_minimize):
+                  atoms_to_minimize, gap=''):
         if ((lambdas_type == Lambda.DUAL_LAMBDA) or
                 (lambdas_type == Lambda.STERIC_LAMBDA)):
-            print(" - Minimizing distances")
+            print("{} - Minimizing distances".format(gap))
 
             parallelLoop = partial(self._parallelPELEMinimizerLoop,
                                    general_path, atoms_to_minimize)
@@ -180,8 +181,8 @@ class dECalculation(Command):
                     copyFile(original_pdb, general_path)
 
     def _dECalculation(self, simulation, lambda_, shif_lambda, general_path,
-                       num):
-        print("  - Calculating energetic differences")
+                       num, gap=''):
+        print("{} - Calculating energetic differences".format(gap))
 
         parallelLoop = partial(self._parallelPELERecalculatorLoop,
                                lambda_, shif_lambda, general_path, num)
