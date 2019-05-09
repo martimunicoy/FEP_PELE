@@ -372,6 +372,101 @@ class Settings(object):
             str(self.solvent_type) + ';' + \
             str(self.splitted_lambdas) + '\n'
 
+    def setGeneralPath(self, value):
+        self.__general_path = asPath(os.path.abspath(str(value)))
+
+    def setInitialTemplate(self, value):
+        key = co.CONTROL_FILE_DICT["INITIAL_TEMPLATE"]
+        value = self._checkFile(key, value)
+        self.__initial_template = str(value)
+
+    def setFinalTemplate(self, value):
+        key = co.CONTROL_FILE_DICT["FINAL_TEMPLATE"]
+        value = self._checkFile(key, value)
+        self.__final_template = str(value)
+
+    def setInitialLigandPdb(self, value):
+        key = co.CONTROL_FILE_DICT["INITIAL_LIGAND_PDB"]
+        value = self._checkFile(key, value)
+        self.__initial_ligand_pdb = str(value)
+
+    def setFinalLigandPdb(self, value):
+        key = co.CONTROL_FILE_DICT["FINAL_LIGAND_PDB"]
+        value = self._checkFile(key, value)
+        self.__final_ligand_pdb = str(value)
+
+    def setPPControlFile(self, value):
+        key = co.CONTROL_FILE_DICT["PP_CONTROL_FILE"]
+        value = self._checkFile(key, value)
+        self.__pp_control_file = str(value)
+
+    def setSPControlFile(self, value):
+        key = co.CONTROL_FILE_DICT["SP_CONTROL_FILE"]
+        value = self._checkFile(key, value)
+        self.__sp_control_file = str(value)
+
+    def setMinControlFile(self, value):
+        key = co.CONTROL_FILE_DICT["MIN_CONTROL_FILE"]
+        value = self._checkFile(key, value)
+        self.__min_control_file = str(value)
+
+    def setSimControlFile(self, value):
+        key = co.CONTROL_FILE_DICT["SIM_CONTROL_FILE"]
+        value = self._checkFile(key, value)
+        self.__sim_control_file = str(value)
+
+    def setInputPDB(self, value):
+        key = co.CONTROL_FILE_DICT["INPUT_PDB"]
+        value = self._checkFile(key, value)
+        self.__input_pdb = str(value)
+
+    def setNumberOfProcessors(self, value):
+        key = co.CONTROL_FILE_DICT["NUMBER_OF_PROCESSORS"]
+        self._checkPositiveInteger(key, value)
+        self.__number_of_processors = int(value)
+
+    def setLambdas(self, value):
+        self.__splitted_lambdas = False
+        self.__default_lambdas = False
+        self.__lambdas = []
+
+        for lambda_ in value:
+            self.__lambdas.append(lambda_)
+
+        # Lambdas must be sorted
+        if (self.__lambdas != sorted(self.__lambdas, reverse=False) and
+                self.__lambdas != sorted(self.__lambdas, reverse=True)):
+            print("Error while setting lambdas. They are not sorted.")
+            exit(1)
+
+    def setStericLambdas(self, value):
+        self.__splitted_lambdas = True
+        self.__default_lambdas = False
+        self.__lj_lambdas = []
+
+        for lambda_ in value:
+            self.__lj_lambdas.append(lambda_)
+
+        # Lambdas must be sorted
+        if (self.__lj_lambdas != sorted(self.__lj_lambdas, reverse=False) and
+                self.__lj_lambdas != sorted(self.__lj_lambdas, reverse=True)):
+            print("Error while setting lambdas. They are not sorted.")
+            exit(1)
+
+    def setCoulombicLambdas(self, value):
+        self.__splitted_lambdas = True
+        self.__default_lambdas = False
+        self.__c_lambdas = []
+
+        for lambda_ in value:
+            self.__c_lambdas.append(lambda_)
+
+        # Lambdas must be sorted
+        if (self.__c_lambdas != sorted(self.__c_lambdas, reverse=False) and
+                self.__c_lambdas != sorted(self.__c_lambdas, reverse=True)):
+            print("Error while setting lambdas. They are not sorted.")
+            exit(1)
+
     def _getSingleValue(self, key, value):
         if (len(value) != 1):
             raise NameError('Expected a single value in line with key' +

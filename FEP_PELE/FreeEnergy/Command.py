@@ -157,10 +157,10 @@ class Command(object):
             path += self.settings.initial_template_name
 
         if (constant_lambda is not None):
-            print("  - Applying {}".format(str(constant_lambda)))
+            print("{}  - Applying {}".format(gap, str(constant_lambda)))
             self.alchemicalTemplateCreator.applyLambda(constant_lambda)
 
-        print("  - Applying {}".format(str(lambda_)))
+        print("{}  - Applying {}".format(gap, str(lambda_)))
         self.alchemicalTemplateCreator.applyLambda(lambda_)
 
         self.alchemicalTemplateCreator.writeAlchemicalTemplate(path)

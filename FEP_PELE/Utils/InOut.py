@@ -3,6 +3,7 @@
 import os
 import glob
 import shutil
+import stat
 
 
 # FEP_PELE imports
@@ -108,6 +109,10 @@ def moveFile(file_to_move, destination_path):
         raise NameError("MoveFile Error: " + str(e))
 
     os.rename(file_to_move, destination_path)
+
+
+def copyFolder(src, dst):
+    shutil.copytree(src, dst)
 
 
 def write_lambda_value_to_control_file(input_path, lambda_value,
