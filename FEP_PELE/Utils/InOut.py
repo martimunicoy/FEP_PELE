@@ -115,6 +115,16 @@ def copyFolder(src, dst):
     shutil.copytree(src, dst)
 
 
+def copySymLink(src, dst):
+    if os.path.islink(src):
+        if os.path.lexists(dst):
+            os.unlink(dst)
+        linkto = os.readlink(src)
+        os.symlink(linkto, dst)
+    else:
+        shutil.copy(src, dst)
+
+
 def write_lambda_value_to_control_file(input_path, lambda_value,
                                        output_path=None):
     if (output_path is None):

@@ -10,7 +10,6 @@ from functools import partial
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy import Constants as co
 from FEP_PELE.FreeEnergy.Command import Command
-from FEP_PELE.FreeEnergy.Analysis.Checkers import checkModelCoords
 
 from FEP_PELE.TemplateHandler import Lambda
 
@@ -86,20 +85,6 @@ class dECalculation(Command):
 
             clear_directory(self.path)
 
-            """
-            # Inactivate bad models
-            for model_info_chunks in models_to_discard:
-                if (len(model_info_chunks) == 0):
-                    continue
-                for model_info in model_info_chunks:
-                    print("  - Removing bad model {}".format(model_info[2]))
-                    for report in simulation.iterateOverReports:
-                        if (report.name == model_info[0]):
-                            report.models.inactivate(model_info[1])
-            """
-
-            # ---------------------------------------------------------------------
-
             for shif_lambda in self.sampling_method.getShiftedLambdas(lambda_):
                 print(" - Applying delta lambda " +
                       str(round(shif_lambda.value - lambda_.value, 5)))
@@ -112,8 +97,6 @@ class dECalculation(Command):
 
                 self._minimize(simulation, lambdas_type, general_path,
                                atoms_to_minimize, gap=' ')
-
-                # -----------------------------------------------------------------
 
                 self._dECalculation(simulation, lambda_, shif_lambda,
                                     general_path, num, gap=' ')
@@ -163,8 +146,9 @@ class dECalculation(Command):
 
     def _minimize(self, simulation, lambdas_type, general_path,
                   atoms_to_minimize, gap=''):
-        if ((lambdas_type == Lambda.DUAL_LAMBDA) or
-                (lambdas_type == Lambda.STERIC_LAMBDA)):
+        if ((self.settings.reminimize) and
+            ((lambdas_type == Lambda.DUAL_LAMBDA) or
+             (lambdas_type == Lambda.STERIC_LAMBDA))):
             print("{} - Minimizing distances".format(gap))
 
             parallelLoop = partial(self._parallelPELEMinimizerLoop,
@@ -191,29 +175,12 @@ class dECalculation(Command):
             pool.map(parallelLoop, simulation.iterateOverReports)
 
     def _parallelTrajectoryWriterLoop(self, report_file):
-        """
-        models_to_discard = []
-        """
-
         for model_id in range(0, report_file.trajectory.models.number):
 
             model_name = self.path + co.MODELS_FOLDER + str(model_id) + \
                 '-' + report_file.trajectory.name
 
             report_file.trajectory.writeModel(model_id, model_name)
-
-        """
-            if (self.settings.safety_check):
-                model_okay = checkModelCoords(
-                    model_name,
-                    self.alchemicalTemplateCreator.getFragmentAtoms())
-
-                if (not model_okay):
-                    models_to_discard.append((report_file.name, model_id,
-                                              model_name))
-
-        return models_to_discard
-        """
 
     def _parallelOriginalEnergiesCalculator(self, path, report_file):
         pid = current_process().pid

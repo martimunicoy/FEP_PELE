@@ -31,6 +31,10 @@ class FEPAnalysis(object):
         self.averages = self._calculateAverages()
 
     def _calculateAverages(self):
+        # TODO!!!
+        # Thermodynamic average means adding the energy for all structures that
+        # were sampled. The new energy if they were accepted and the previous
+        # energy if they new conformation is not accepted!
         averages = {}
 
         for lambda_folder in self.lambda_folders:

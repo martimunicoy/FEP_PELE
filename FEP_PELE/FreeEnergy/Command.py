@@ -106,6 +106,9 @@ class Command(object):
     def ligand_template(self):
         return self._ligand_template
 
+    def setPath(self, path):
+        self._path = path
+
     def _run_with_splitted_lambdas(self):
         output = []
 

@@ -54,6 +54,7 @@ class Settings(object):
         self.__final_ligand_pdb = co.DEF_FINAL_LIGAND_PDB
         self.__solvent_type = co.DEF_SOLVENT_TYPE
         self.__splitted_lambdas = co.DEF_LAMBDA_SPLITTING
+        self.__reminimize = co.DEF_REMINIMIZE
         self.__restart = co.DEF_RESTART
 
         # Other
@@ -182,6 +183,10 @@ class Settings(object):
     @property
     def restart(self):
         return self.__restart
+
+    @property
+    def reminimize(self):
+        return self.__reminimize
 
     def set(self, key, value):
         if (key == co.CONTROL_FILE_DICT["GENERAL_PATH"]):
@@ -327,6 +332,11 @@ class Settings(object):
             value = self._checkBool(key, value)
             self.__restart = value
 
+        elif (key == co.CONTROL_FILE_DICT["REMINIMIZE"]):
+            value = self._getSingleValue(key, value)
+            value = self._checkBool(key, value)
+            self.__reminimize = value
+
         elif (key == co.CONTROL_FILE_DICT["INPUT_PDB"]):
             value = self._getSingleValue(key, value)
             value = self._checkFile(key, value)
@@ -374,6 +384,15 @@ class Settings(object):
 
     def setGeneralPath(self, value):
         self.__general_path = asPath(os.path.abspath(str(value)))
+
+    def setMinimizationFolder(self, value):
+        self.__minimization_folder = asPath(os.path.abspath(str(value)))
+
+    def setSimulationFolder(self, value):
+        self.__simulation_folder = asPath(os.path.abspath(str(value)))
+
+    def setCalculationFolder(self, value):
+        self.__calculation_folder = asPath(os.path.abspath(str(value)))
 
     def setInitialTemplate(self, value):
         key = co.CONTROL_FILE_DICT["INITIAL_TEMPLATE"]

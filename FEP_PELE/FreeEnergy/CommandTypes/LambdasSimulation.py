@@ -9,9 +9,10 @@ import random
 # FEP_PELE imports
 from FEP_PELE.FreeEnergy.Command import Command
 from FEP_PELE.FreeEnergy import Constants as co
-from FEP_PELE.FreeEnergy.Constants import SAMPLING_METHODS_DICT as METHODS_DICT
 
 from FEP_PELE.TemplateHandler import Lambda
+from FEP_PELE.TemplateHandler.AlchemicalTemplateCreator import \
+    AlchemicalTemplateCreator
 
 from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import full_clear_directory
@@ -32,16 +33,27 @@ __email__ = "marti.municoy@bsc.es"
 
 
 # Class definitions
-class LambdasSampling(Command):
+class LambdasSimulation(Command):
     def __init__(self, settings):
-        self._name = co.COMMAND_NAMES_DICT["LAMBDAS_SAMPLING"]
-        self._label = co.COMMAND_LABELS_DICT["LAMBDAS_SAMPLING"]
+        self._name = co.COMMAND_NAMES_DICT["LAMBDA_SIMULATION"]
         Command.__init__(self, settings)
-        self._path = self.settings.simulation_path
+
+    @property
+    def name(self):
+        return self._name
 
     def run(self):
-        self._start()
+        print("####################")
+        print(" Lambda Simulations")
+        print("####################")
 
+        alchemicalTemplateCreator = AlchemicalTemplateCreator(
+            self.settings.initial_template,
+            self.settings.final_template,
+            self.settings.atom_links)
+
+        # @TODO: add capacity to restart without losing previous information
+        # Clear all directories
         if (not self.settings.restart):
             full_clear_directory(self.settings.simulation_path)
             full_clear_directory(self.settings.calculation_path)
@@ -52,28 +64,14 @@ class LambdasSampling(Command):
             clear_directory(self.settings.minimization_path)
 
         if (self.settings.splitted_lambdas):
-            self._run_with_splitted_lambdas()
+            self._run_with_splitted_lambdas(alchemicalTemplateCreator)
         else:
-            lambdas = self.settings.lambdas
-            self._run(lambdas, Lambda.DUAL_LAMBDA)
+            self._run(alchemicalTemplateCreator, self.settings.lambdas,
+                      Lambda.DUAL_LAMBDA)
 
-        self._finish()
-
-    def _run(self, lambdas, lambdas_type, num=0,
+    def _run(self, alchemicalTemplateCreator, lambdas, lambdas_type, num=0,
              constant_lambda=None):
-
-        lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
-
-        """
-        # In DoubleWide sampling, sampling is not performed on edging lambdas
-        if (self.settings.sampling_method == METHODS_DICT["DOUBLE_WIDE"]):
-            if (len(lambdas) > 1):
-                lambdas = lambdas[1:-1]
-            else:
-                return []
-        """
-
-        for lambda_ in lambdas:
+        for lambda_ in Lambda.IterateOverLambdas(lambdas, lambdas_type):
             if (self.checkPoint.check((self.name, str(num) +
                                        str(lambda_.type) +
                                        str(lambda_.value)))):
@@ -83,7 +81,10 @@ class LambdasSampling(Command):
 
             print(" - Creating alchemical template")
 
-            self._createAlchemicalTemplate(lambda_, constant_lambda)
+            self._createAlchemicalTemplate(alchemicalTemplateCreator,
+                                           lambda_, constant_lambda)
+
+            print("   Done")
 
             print(" - Running PELE")
 
@@ -95,10 +96,10 @@ class LambdasSampling(Command):
 
             self._simulate(lambda_, num)
 
+            print("   Done")
+
             self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
                                   str(lambda_.value)))
-
-        return []
 
     def _minimize(self):
         path = self.settings.minimization_path
@@ -118,7 +119,7 @@ class LambdasSampling(Command):
             sys.exit(1)
 
     def _simulate(self, lambda_, num):
-        path = self.path
+        path = self.settings.simulation_path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
             path += str(num) + '_' + lambda_.type + "/"
         path += str(lambda_.value) + "/"
@@ -169,8 +170,3 @@ class LambdasSampling(Command):
         cf_creator.replaceFlag("SEED", random.randint(0, 999999))
 
         cf_creator.write(path + name)
-
-    def starting(self):
-        print("#################")
-        print(" Lambda Sampling")
-        print("#################")

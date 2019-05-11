@@ -5,9 +5,9 @@
 import sys
 import argparse
 import copy
-import multiprocessing
-import multiprocessing.pool
-from multiprocessing import current_process
+# import multiprocessing
+# import multiprocessing.pool
+from multiprocessing import Pool, current_process
 from functools import partial
 
 
@@ -15,8 +15,7 @@ from functools import partial
 from FreeEnergy.InputFileParser import InputFileParser
 from FreeEnergy.CommandsBuilder import CommandsBuilder
 from TemplateHandler import Lambda
-from Utils.InOut import full_clear_directory, copyFolder
-from PELETools import PELEConstants as pele_co
+from Utils.InOut import full_clear_directory, copyFolder, copySymLink
 
 
 # Script information
@@ -28,6 +27,7 @@ __email__ = "marti.municoy@bsc.es"
 
 
 # Class definitions
+"""
 class NoDaemonProcess(multiprocessing.Process):
     def _get_daemon(self):
         return False
@@ -40,6 +40,7 @@ class NoDaemonProcess(multiprocessing.Process):
 
 class NonDaemonPool(multiprocessing.pool.Pool):
     Process = NoDaemonProcess
+"""
 
 
 # Function definitions
@@ -55,13 +56,22 @@ def parseArguments():
     return path_to_input_file
 
 
+def setFile(path_to_file, relative_path):
+    try:
+        checkFile(path_to_file)
+    except NameError:
+        path_to_file = relative_path + path_to_file
+
+    return path_to_file
+
+
 def prepareSettingsForLambda(original_settings, lambda_, lambda_type):
     settings = copy.deepcopy(original_settings)
 
     lambda_ = Lambda.Lambda(lambda_)
 
-    path = settings.general_path
-    relative_path = '../'
+    path = settings.general_path + 'runs/'
+    relative_path = '../../'
     if (lambda_type != Lambda.DUAL_LAMBDA):
         path += lambda_type + '/'
         relative_path += '../'
@@ -70,25 +80,50 @@ def prepareSettingsForLambda(original_settings, lambda_, lambda_type):
     full_clear_directory(path)
     copyFolder(settings.general_path + 'DataLocal',
                path + 'DataLocal')
-    copyFolder(settings.general_path + 'Data',
-               path + 'Data')
-    copyFolder(settings.general_path + 'Documents',
-               path + 'Documents')
+    copySymLink(settings.general_path + 'Data',
+                path + 'Data')
+    copySymLink(settings.general_path + 'Documents',
+                path + 'Documents')
 
     settings.setGeneralPath(path)
-    settings.setInitialTemplate(relative_path + settings.initial_template)
-    settings.setFinalTemplate(relative_path + settings.final_template)
-    settings.setInitialLigandPdb(relative_path + settings.initial_ligand_pdb)
-    settings.setFinalLigandPdb(relative_path + settings.final_ligand_pdb)
-    settings.setPPControlFile(relative_path + settings.pp_control_file)
-    settings.setSPControlFile(relative_path + settings.sp_control_file)
-    settings.setMinControlFile(relative_path + settings.min_control_file)
-    settings.setSimControlFile(relative_path + settings.sim_control_file)
-    settings.setInputPDB(relative_path + settings.input_pdb)
 
-    settings.__lambdas = []
-    settings.__lj_lambdas = []
-    settings.__c_lambdas = []
+    if (settings.initial_template is not None):
+        settings.setInitialTemplate(setFile(settings.initial_template,
+                                            relative_path))
+    if (settings.final_template is not None):
+        settings.setFinalTemplate(setFile(settings.final_template,
+                                          relative_path))
+
+    if (settings.initial_ligand_pdb is not None):
+        settings.setInitialLigandPdb(setFile(settings.initial_ligand_pdb,
+                                             relative_path))
+
+    if (settings.final_ligand_pdb is not None):
+        settings.setFinalLigandPdb(setFile(settings.final_ligand_pdb,
+                                           relative_path))
+
+    if (settings.pp_control_file is not None):
+        settings.setPPControlFile(setFile(settings.pp_control_file,
+                                          relative_path))
+
+    if (settings.sp_control_file is not None):
+        settings.setSPControlFile(setFile(settings.sp_control_file,
+                                          relative_path))
+
+    if (settings.min_control_file is not None):
+        settings.setMinControlFile(setFile(settings.min_control_file,
+                                           relative_path))
+
+    if (settings.sim_control_file is not None):
+        settings.setSimControlFile(setFile(settings.sim_control_file,
+                                           relative_path))
+
+    if (settings.input_pdb is not None):
+        settings.setInputPDB(setFile(settings.input_pdb, relative_path))
+
+    settings.setLambdas([])
+    settings.setStericLambdas([])
+    settings.setCoulombicLambdas([])
 
     if (lambda_type == Lambda.DUAL_LAMBDA):
         settings.setLambdas([lambda_.value, ])
@@ -117,6 +152,7 @@ def parallelCommandRunner(original_settings, lambda_info):
     commands = commandsBuilder.createCommands()
 
     for command in commands:
+        command.setPath(original_settings.simulation_path)
         command.run()
 
 
@@ -142,7 +178,7 @@ def main():
             lambdas.append(lambda_)
             lambda_types.append(Lambda.DUAL_LAMBDA)
 
-    number_of_parallel_simulations = 3
+    number_of_parallel_simulations = 2
     max_parallel_commands = int(settings.number_of_processors /
                                 number_of_parallel_simulations)
 
@@ -150,7 +186,7 @@ def main():
 
     pCommandRunner = partial(parallelCommandRunner, settings)
 
-    with NonDaemonPool(max_parallel_commands) as pool:
+    with Pool(max_parallel_commands) as pool:
         pool.map(pCommandRunner, zip(lambdas, lambda_types))
 
 
