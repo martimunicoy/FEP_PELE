@@ -62,8 +62,9 @@ class PELERunner(object):
 
     def _mpi_run(self, control_file_path):
         try:
-            output = check_output(["mpirun", "-n",
+            output = check_output(["mpirun", "--cpus-per-proc",
                                    str(self.__number_of_processors),
+                                   "-n", str(self.__number_of_processors),
                                    self.__executable_path,
                                    control_file_path],
                                   stderr=STDOUT)

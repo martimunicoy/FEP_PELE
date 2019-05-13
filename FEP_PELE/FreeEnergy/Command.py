@@ -45,6 +45,7 @@ class Command(object):
         # PELE needs to be working in the general path in order to find the
         # the required Data and Document folders
         os.chdir(self.settings.general_path)
+        self._pid = int(0)
 
         checkPoint = CheckPoint(settings.general_path +
                                 co.CHECKPOINT_NAME,
@@ -103,11 +104,18 @@ class Command(object):
         return self._path
 
     @property
+    def PID(self):
+        return self._PID
+
+    @property
     def ligand_template(self):
         return self._ligand_template
 
     def setPath(self, path):
-        self._path = path
+        self._path = str(path)
+
+    def setPID(self, PID):
+        self._PID = int(PID)
 
     def _run_with_splitted_lambdas(self):
         output = []

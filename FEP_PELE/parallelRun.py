@@ -15,7 +15,9 @@ from functools import partial
 from FreeEnergy.InputFileParser import InputFileParser
 from FreeEnergy.CommandsBuilder import CommandsBuilder
 from TemplateHandler import Lambda
-from Utils.InOut import full_clear_directory, copyFolder, copySymLink
+from Utils.InOut import clear_directory, copyFolder, copySymLink
+from Utils.InOut import getLastFolderFromPath
+from FreeEnergy import Constants as co
 
 
 # Script information
@@ -65,19 +67,17 @@ def setFile(path_to_file, relative_path):
     return path_to_file
 
 
-def prepareSettingsForLambda(original_settings, lambda_, lambda_type):
+def prepareSettingsForLambda(original_settings, lambda_):
     settings = copy.deepcopy(original_settings)
-
-    lambda_ = Lambda.Lambda(lambda_)
 
     path = settings.general_path + 'runs/'
     relative_path = '../../'
-    if (lambda_type != Lambda.DUAL_LAMBDA):
-        path += lambda_type + '/'
+    if (lambda_.type != Lambda.DUAL_LAMBDA):
+        path += lambda_.type + '/'
         relative_path += '../'
     path += lambda_.folder_name + "/"
 
-    full_clear_directory(path)
+    clear_directory(path)
     copyFolder(settings.general_path + 'DataLocal',
                path + 'DataLocal')
     copySymLink(settings.general_path + 'Data',
@@ -86,6 +86,8 @@ def prepareSettingsForLambda(original_settings, lambda_, lambda_type):
                 path + 'Documents')
 
     settings.setGeneralPath(path)
+    settings.setMinimizationPath(
+        path + getLastFolderFromPath(original_settings.minimization_path))
 
     if (settings.initial_template is not None):
         settings.setInitialTemplate(setFile(settings.initial_template,
@@ -121,29 +123,37 @@ def prepareSettingsForLambda(original_settings, lambda_, lambda_type):
     if (settings.input_pdb is not None):
         settings.setInputPDB(setFile(settings.input_pdb, relative_path))
 
-    settings.setLambdas([])
-    settings.setStericLambdas([])
-    settings.setCoulombicLambdas([])
-
-    if (lambda_type == Lambda.DUAL_LAMBDA):
-        settings.setLambdas([lambda_.value, ])
-    elif (lambda_type == Lambda.STERIC_LAMBDA):
-        settings.setStericLambdas([lambda_.value, ])
-    elif (lambda_type == Lambda.COULOMBIC_LAMBDA):
-        settings.setCoulombicLambdas([lambda_.value, ])
-
     return settings
 
 
-def parallelCommandRunner(original_settings, lambda_info):
-    lambda_, lambda_type = lambda_info
+def setLambdas(command, lambda_):
+    command.settings.setLambdas([])
+    command.settings.setStericLambdas([])
+    command.settings.setCoulombicLambdas([])
 
+    lambdas = [lambda_.value, ]
+
+    # If command is exponential averaging, make pairs of lambdas
+    if (command.name == co.COMMAND_NAMES_DICT["EXPONENTIAL_AVERAGING"]):
+        if (lambda_.next_lambda is not None):
+            lambdas.append(lambda_.next_lambda.value)
+
+    if (lambda_.type == Lambda.DUAL_LAMBDA):
+        command.settings.setLambdas(lambdas)
+    elif (lambda_.type == Lambda.STERIC_LAMBDA):
+        command.settings.setStericLambdas(lambdas)
+    elif (lambda_.type == Lambda.COULOMBIC_LAMBDA):
+        command.settings.setCoulombicLambdas(lambdas)
+
+
+def parallelCommandRunner(original_settings, lambda_):
     pid = current_process().pid
 
     settings = prepareSettingsForLambda(original_settings,
-                                        lambda_, lambda_type)
+                                        lambda_)
 
-    print(" - Running commands for lambda: " + str(round(lambda_, 5)))
+    print(" - Running commands for {} lambda: {:6.4f}".format(lambda_.type,
+                                                              lambda_.value))
 
     sys.stdout = open(settings.general_path + str(pid) + ".out", "w")
     sys.stderr = open(settings.general_path + str(pid) + ".err", "w")
@@ -153,6 +163,12 @@ def parallelCommandRunner(original_settings, lambda_info):
 
     for command in commands:
         command.setPath(original_settings.simulation_path)
+        command.setPID(pid)
+        setLambdas(command, lambda_)
+        print(command.settings.lambdas)
+        print(command.settings.lj_lambdas)
+        print(command.settings.c_lambdas)
+
         command.run()
 
 
@@ -163,22 +179,20 @@ def main():
     settings = inputFileParser.createSettings()
 
     lambdas = []
-    lambda_types = []
+    lambdasBuilder = Lambda.LambdasBuilder()
 
     if (settings.splitted_lambdas):
-        for lambda_ in settings.lj_lambdas:
-            lambdas.append(lambda_)
-            lambda_types.append(Lambda.STERIC_LAMBDA)
-        for lambda_ in settings.c_lambdas:
-            lambdas.append(lambda_)
-            lambda_types.append(Lambda.COULOMBIC_LAMBDA)
+        lambdas += lambdasBuilder.build(settings.lj_lambdas,
+                                        Lambda.STERIC_LAMBDA)
+
+        lambdas += lambdasBuilder.build(settings.c_lambdas,
+                                        Lambda.COULOMBIC_LAMBDA)
 
     else:
-        for lambda_ in settings.lambdas:
-            lambdas.append(lambda_)
-            lambda_types.append(Lambda.DUAL_LAMBDA)
+        lambdas += lambdasBuilder.build(settings.lj_lambdas,
+                                        Lambda.DUAL_LAMBDA)
 
-    number_of_parallel_simulations = 2
+    number_of_parallel_simulations = 5
     max_parallel_commands = int(settings.number_of_processors /
                                 number_of_parallel_simulations)
 
@@ -187,7 +201,7 @@ def main():
     pCommandRunner = partial(parallelCommandRunner, settings)
 
     with Pool(max_parallel_commands) as pool:
-        pool.map(pCommandRunner, zip(lambdas, lambda_types))
+        pool.map(pCommandRunner, lambdas)
 
 
 if __name__ == '__main__':

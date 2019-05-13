@@ -96,6 +96,7 @@ COMMAND_NAMES_LIST = [
     # Bound state-related commands
     "LambdasSampling",
     "dECalculation",
+    "SerialdECalculation",
     # Analysis commands
     "ExponentialAveraging",
     # Unbound state-related commands
@@ -108,18 +109,20 @@ COMMAND_NAMES_DICT = {
     # Bound state-related commands
     "LAMBDAS_SAMPLING": COMMAND_NAMES_LIST[0],
     "DE_CALCULATION": COMMAND_NAMES_LIST[1],
+    "SERIAL_DE_CALCULATION": COMMAND_NAMES_LIST[2],
     # Analysis commands
-    "EXPONENTIAL_AVERAGING": COMMAND_NAMES_LIST[2],
+    "EXPONENTIAL_AVERAGING": COMMAND_NAMES_LIST[3],
     # Unbound state-related commands
-    "UNBOUND_DE_CALCULATION": COMMAND_NAMES_LIST[3],
+    "UNBOUND_DE_CALCULATION": COMMAND_NAMES_LIST[4],
     # Others
-    "SOLVATION_FREE_ENERGY_CALCULATION": COMMAND_NAMES_LIST[4]}
+    "SOLVATION_FREE_ENERGY_CALCULATION": COMMAND_NAMES_LIST[5]}
 
 # Dictionary of Command labels
 COMMAND_LABELS_DICT = {
     # Bound state-related commands
     "LAMBDAS_SAMPLING": "Lambda Sampling",
     "DE_CALCULATION": "dE Calculation",
+    "SERIAL_DE_CALCULATION": "dE Calculation",
     # Analysis commands
     "EXPONENTIAL_AVERAGING": "Exponential Averaging",
     # Unbound state-related commands
