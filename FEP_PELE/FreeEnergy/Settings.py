@@ -46,9 +46,12 @@ class Settings(object):
         self.__pp_control_file = co.DEF_PP_CONTROL_FILE
         self.__sp_control_file = co.DEF_SP_CONTROL_FILE
         self.__safety_check = co.DEF_SAFETY_CHECK
-        self.__minimization_folder = asPath(co.DEF_MIN_FOLDER)
-        self.__simulation_folder = asPath(co.DEF_SIM_FOLDER)
-        self.__calculation_folder = asPath(co.DEF_CAL_FOLDER)
+        self.__minimization_path = asPath(os.getcwd()) + \
+            asPath(co.DEF_MIN_FOLDER)
+        self.__simulation_path = asPath(os.getcwd()) + \
+            asPath(co.DEF_SIM_FOLDER)
+        self.__calculation_path = asPath(os.getcwd()) + \
+            asPath(co.DEF_CAL_FOLDER)
         self.__input_pdb = co.DEF_INPUT_PDB
         self.__initial_ligand_pdb = co.DEF_INITIAL_LIGAND_PDB
         self.__final_ligand_pdb = co.DEF_FINAL_LIGAND_PDB
@@ -137,28 +140,16 @@ class Settings(object):
         return getFileFromPath(self.__final_template)
 
     @property
-    def minimization_folder(self):
-        return self.__minimization_folder
-
-    @property
     def minimization_path(self):
-        return self.general_path + self.minimization_folder
-
-    @property
-    def simulation_folder(self):
-        return self.__simulation_folder
+        return self.__minimization_path
 
     @property
     def simulation_path(self):
-        return self.general_path + self.simulation_folder
-
-    @property
-    def calculation_folder(self):
-        return self.__calculation_folder
+        return self.__simulation_path
 
     @property
     def calculation_path(self):
-        return self.general_path + self.calculation_folder
+        return self.__calculation_path
 
     @property
     def input_pdb(self):
@@ -312,15 +303,18 @@ class Settings(object):
 
         if (key == co.CONTROL_FILE_DICT["MIN_FOLDER"]):
             value = self._getSingleValue(key, value)
-            self.__minimization_folder = asPath(str(value))
+            value = self._checkFile(key, value)
+            self.__minimization_path = asPath(str(value))
 
         if (key == co.CONTROL_FILE_DICT["SIM_FOLDER"]):
             value = self._getSingleValue(key, value)
-            self.__simulation_folder = asPath(str(value))
+            value = self._checkFile(key, value)
+            self.__simulation_path = asPath(str(value))
 
         if (key == co.CONTROL_FILE_DICT["CAL_FOLDER"]):
             value = self._getSingleValue(key, value)
-            self.__calculation_folder = asPath(str(value))
+            value = self._checkFile(key, value)
+            self.__calculation_path = asPath(str(value))
 
         elif (key == co.CONTROL_FILE_DICT["SAFETY_CHECK"]):
             value = self._getSingleValue(key, value)
@@ -373,9 +367,9 @@ class Settings(object):
             str(self.pp_control_file) + ';' + \
             str(self.sp_control_file) + ';' + \
             str(self.safety_check) + ';' + \
-            str(self.minimization_folder) + ';' + \
-            str(self.simulation_folder) + ';' + \
-            str(self.calculation_folder) + ';' + \
+            str(self.minimization_path) + ';' + \
+            str(self.simulation_path) + ';' + \
+            str(self.calculation_path) + ';' + \
             str(self.input_pdb) + ';' + \
             str(self.initial_ligand_pdb) + ';' + \
             str(self.final_ligand_pdb) + ';' + \
@@ -385,14 +379,14 @@ class Settings(object):
     def setGeneralPath(self, value):
         self.__general_path = asPath(os.path.abspath(str(value)))
 
-    def setMinimizationFolder(self, value):
-        self.__minimization_folder = asPath(os.path.abspath(str(value)))
+    def setMinimizationPath(self, value):
+        self.__minimization_path = asPath(os.path.abspath(str(value)))
 
-    def setSimulationFolder(self, value):
-        self.__simulation_folder = asPath(os.path.abspath(str(value)))
+    def setSimulationPath(self, value):
+        self.__simulation_path = asPath(os.path.abspath(str(value)))
 
-    def setCalculationFolder(self, value):
-        self.__calculation_folder = asPath(os.path.abspath(str(value)))
+    def setCalculationPath(self, value):
+        self.__calculation_path = asPath(os.path.abspath(str(value)))
 
     def setInitialTemplate(self, value):
         key = co.CONTROL_FILE_DICT["INITIAL_TEMPLATE"]

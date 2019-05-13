@@ -5,6 +5,7 @@
 from .Constants import COMMAND_NAMES_DICT
 from .CommandTypes.LambdasSampling import LambdasSampling
 from .CommandTypes.dECalculation import dECalculation
+from .CommandTypes.SerialdECalculation import SerialdECalculation
 from .CommandTypes.ExponentialAveraging import ExponentialAveraging
 from .CommandTypes.UnbounddECalculation import UnbounddECalculation
 from .CommandTypes.SolvationFreeEnergyCalculation \
@@ -37,6 +38,8 @@ class CommandsBuilder(object):
             return LambdasSampling(self.settings)
         elif (command_name == COMMAND_NAMES_DICT["DE_CALCULATION"]):
             return dECalculation(self.settings)
+        elif (command_name == COMMAND_NAMES_DICT["SERIAL_DE_CALCULATION"]):
+            return SerialdECalculation(self.settings)
         elif (command_name == COMMAND_NAMES_DICT["EXPONENTIAL_AVERAGING"]):
             return ExponentialAveraging(self.settings)
         if (command_name == COMMAND_NAMES_DICT["UNBOUND_DE_CALCULATION"]):

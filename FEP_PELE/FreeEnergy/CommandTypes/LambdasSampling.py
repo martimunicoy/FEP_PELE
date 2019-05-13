@@ -14,7 +14,7 @@ from FEP_PELE.FreeEnergy.Constants import SAMPLING_METHODS_DICT as METHODS_DICT
 from FEP_PELE.TemplateHandler import Lambda
 
 from FEP_PELE.Utils.InOut import clear_directory
-from FEP_PELE.Utils.InOut import full_clear_directory
+from FEP_PELE.Utils.InOut import create_directory
 from FEP_PELE.Utils.InOut import getFileFromPath
 from FEP_PELE.Utils.InOut import writeLambdaTitle
 
@@ -42,14 +42,7 @@ class LambdasSampling(Command):
     def run(self):
         self._start()
 
-        if (not self.settings.restart):
-            full_clear_directory(self.settings.simulation_path)
-            full_clear_directory(self.settings.calculation_path)
-            full_clear_directory(self.settings.minimization_path)
-        else:
-            clear_directory(self.settings.simulation_path)
-            clear_directory(self.settings.calculation_path)
-            clear_directory(self.settings.minimization_path)
+        create_directory(self.settings.simulation_path)
 
         if (self.settings.splitted_lambdas):
             self._run_with_splitted_lambdas()
@@ -87,9 +80,9 @@ class LambdasSampling(Command):
 
             print(" - Running PELE")
 
-            print("  - Initial minimization")
+            #print("  - Initial minimization")
 
-            self._minimize()
+            #self._minimize()
 
             print("  - Simulation")
 

@@ -112,7 +112,10 @@ def moveFile(file_to_move, destination_path):
 
 
 def copyFolder(src, dst):
-    shutil.copytree(src, dst)
+    try:
+        shutil.copytree(src, dst)
+    except FileExistsError:
+        pass
 
 
 def copySymLink(src, dst):
