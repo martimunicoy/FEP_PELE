@@ -200,8 +200,9 @@ class Command(object):
             if (final_lambda > 1) or (final_lambda < 0):
                 continue
 
-            selected_folders.append(LambdaFolder(folder,
-                                                 lambda_type=lambda_type))
+            selected_folders.append(LambdaFolder(
+                folder, lambda_type=lambda_type,
+                total_PELE_steps=self.settings.total_PELE_steps))
 
         return sorted(selected_folders)
 

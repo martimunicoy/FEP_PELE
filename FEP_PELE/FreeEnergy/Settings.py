@@ -40,6 +40,7 @@ class Settings(object):
         self.__c_lambdas = co.DEF_C_LAMBDAS
         self.__sampling_method = co.DEF_SAMPLING_METHOD
         self.__number_of_processors = co.DEF_NUMBER_OF_PROCESSORS
+        self.__total_pele_steps = co.DEF_TOTAL_PELE_STEPS
         self.__commands = co.DEF_COMMANDS
         self.__min_control_file = co.DEF_MIN_CONTROL_FILE
         self.__sim_control_file = co.DEF_SIM_CONTROL_FILE
@@ -103,6 +104,10 @@ class Settings(object):
     @property
     def number_of_processors(self):
         return self.__number_of_processors
+
+    @property
+    def total_PELE_steps(self):
+        return self.__total_PELE_steps
 
     @property
     def command_names(self):
@@ -283,6 +288,11 @@ class Settings(object):
             self._checkPositiveInteger(key, value)
             self.__number_of_processors = int(value)
 
+        elif (key == co.CONTROL_FILE_DICT["TOTAL_PELE_STEPS"]):
+            value = self._getSingleValue(key, value)
+            self._checkPositiveInteger(key, value)
+            self.__total_PELE_steps = int(value)
+
         elif (key == co.CONTROL_FILE_DICT["COMMANDS"]):
             value = self._getCommaSeparatedList(key, value)
             self._checkCommandNames(key, value)
@@ -368,6 +378,7 @@ class Settings(object):
             str(self.lj_lambdas) + ';' + \
             str(self.c_lambdas) + ';' + \
             str(self.number_of_processors) + ';' + \
+            str(self.total_PELE_steps) + ';' + \
             str(self.min_control_file) + ';' + \
             str(self.sim_control_file) + ';' + \
             str(self.pp_control_file) + ';' + \

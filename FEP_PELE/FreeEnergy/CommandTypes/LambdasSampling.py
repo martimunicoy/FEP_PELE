@@ -167,10 +167,7 @@ class LambdasSampling(Command):
         cf_creator.replaceFlag("TRAJECTORY_PATH", path +
                                co.SINGLE_TRAJECTORY_NAME)
         cf_creator.replaceFlag("SEED", random.randint(0, 999999))
+        cf_creator.replaceFlaf("TOTAL_PELE_STEPS",
+                               self.settings.total_PELE_steps)
 
         cf_creator.write(path + name)
-
-    def starting(self):
-        print("#################")
-        print(" Lambda Sampling")
-        print("#################")

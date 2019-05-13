@@ -21,7 +21,7 @@ __email__ = "marti.municoy@bsc.es"
 
 
 class LambdaFolder(object):
-    def __init__(self, path, lambda_type=None):
+    def __init__(self, path, lambda_type=None, total_PELE_steps=None):
         # Setting default values
         try:
             checkPath(path)
@@ -73,6 +73,11 @@ class LambdaFolder(object):
         self.__delta_energies = None
         self.__type = lambda_type
 
+        if (total_PELE_steps is None):
+            print("  - LambdaFolder Warning: unknown total number of PELE " +
+                  "steps")
+        self.__total_PELE_steps = total_PELE_steps
+
     @property
     def path(self):
         return self.__path
@@ -101,6 +106,10 @@ class LambdaFolder(object):
     def type(self):
         return self.__type
 
+    @property
+    def total_PELE_steps(self):
+        return self.__total_PELE_steps
+
     def __lt__(self, other):
         if (self.initial_lambda != other.initial_lambda):
             return self.initial_lambda < other.initial_lambda
@@ -121,6 +130,45 @@ class LambdaFolder(object):
         return "Lambda Folder from {} to {}".format(self.initial_lambda,
                                                     self.final_lambda)
 
+    def _getDeltaEnergiesFromReport(self, report):
+        energies = []
+
+        report_steps = report.getMetric(co.PP_STEPS_COL)
+        report_energies = report.getMetric(co.PP_DELTA_ENERGIES_COL)
+
+        if (len(report_energies) == 0):
+            print("  - LambdaFolder Warning: found an empty report file " +
+                  "{}".format(report.path))
+            return energies
+
+        """
+        if (len(report_energies) == 1):
+            print("  - LambdaFolder Warning: no steps were accepted in " +
+                  "report file {}".format(report.path))
+            return energies
+
+        # We discard step 0
+        report_steps = report_steps[1:]
+        report_energies = report_energies[1:]
+        """
+
+        last_accepted_step = int(report_steps[0])
+        last_accepted_energy = report_energies[0]
+
+        for step, energy in zip(map(int, report_steps[1:]),
+                                report_energies[1:]):
+            for i in range(0, step - last_accepted_step):
+                energies.append(last_accepted_energy)
+
+            last_accepted_step = int(step)
+            last_accepted_energy = energy
+
+        if (self.total_PELE_steps is not None):
+            for i in range(0, self.total_PELE_steps - last_accepted_step + 1):
+                energies.append(last_accepted_energy)
+
+        return energies
+
     def getDeltaEnergyValues(self):
         if (self.__delta_energies is not None):
             return self.__delta_energies
@@ -135,16 +183,7 @@ class LambdaFolder(object):
                             '_',
                             None)
 
-            report_energies = report.getMetric(co.PP_DELTA_ENERGIES_CO)
-            if (len(report_energies) == 0):
-                print("  - LambdaFolder Warning: found an empty report file " +
-                      "{}".format(report.path))
-                continue
-
-            # Discard first energy
-            report_energies = report_energies[1:]
-
-            energies += report_energies
+            energies += self._getDeltaEnergiesFromReport(report)
 
         self.__delta_energies = energies
 
@@ -161,7 +200,7 @@ class LambdaFolder(object):
                             '_',
                             None)
 
-            report_energies = report.getMetric(co.PP_DELTA_ENERGIES_CO)
+            report_energies = report.getMetric(co.PP_DELTA_ENERGIES_COL)
             if (len(report_energies) == 0):
                 print("  - LambdaFolder Warning: found an empty report file " +
                       "{}".format(report.path))

@@ -23,7 +23,8 @@ CONTROL_FILE_FLAG_NAMES = ["LICENSE_PATH",
                            "SOLVENT_TYPE",
                            "INPUT_PDB_NAME",
                            "SEED",
-                           "ATOMS_TO_MINIMIZE"]
+                           "ATOMS_TO_MINIMIZE",
+                           "TOTAL_PELE_STEPS"]
 
 # PELE solvent type names
 VACUUM_TYPE_NAME = "VACUUM"
