@@ -68,6 +68,11 @@ def clear_directory(path):
                 pass
 
 
+def remove_directory(path):
+    checkPath(path)
+    shutil.rmtree(path)
+
+
 def full_clear_directory(path):
     if (not os.path.exists(path)):
         os.makedirs(path)
@@ -170,30 +175,28 @@ def write_recalculation_control_file(input_path, pdb_name, logfile_name,
 
 
 def write_energies_report(output_path, report_file, energies,
-                          original_energies, rmsds):
+                          rmsds=None):
     tasks = report_file.getMetric(1)
     steps = report_file.getMetric(2)
     accepted_steps = report_file.getMetric(3)
 
+    first_line = co.REPORT_FIRST_LINE
+    if (rmsds is None):
+        first_line = first_line[:-8] + '\n'
+
     with open(output_path + report_file.name, 'w') as file:
-        file.write(co.REPORT_FIRST_LINE)
+        file.write(first_line)
         for i, energy in enumerate(energies):
             if (energy is None):
                 continue
             file.write(str(round(tasks[i])) + "    " +
                        str(round(steps[i])) + "    " +
                        str(round(accepted_steps[i])) + "    " +
-                       str(round(energy, 2)) + "    " +
-                       str(energy - original_energies[i]) + "    " +
-                       str(round(rmsds[i], 3)) +
-                       "\n")
+                       str(round(energy, 2)))
+            if (rmsds is not None):
+                file.write("    " + str(round(rmsds[i], 3)))
 
-
-def write_recalculated_energies_report(output_path, energies):
-    with open(output_path, 'w') as file:
-        file.write('realculatedTotalEnergy\n')
-        for energy in energies:
-            file.write(str(energy) + '\n')
+            file.write("\n")
 
 
 def join_splitted_models(path, trajectory_name):

@@ -55,7 +55,7 @@ class LambdasSampling(Command):
     def _run(self, lambdas, lambdas_type, num=0,
              constant_lambda=None):
 
-        lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
+        lambdas = self.lambdasBuilder.build(lambdas, lambda_type=lambdas_type)
 
         """
         # In DoubleWide sampling, sampling is not performed on edging lambdas
@@ -80,9 +80,9 @@ class LambdasSampling(Command):
 
             print(" - Running PELE")
 
-            #print("  - Initial minimization")
+            print("  - Initial minimization")
 
-            #self._minimize()
+            self._minimize()
 
             print("  - Simulation")
 
@@ -160,7 +160,7 @@ class LambdasSampling(Command):
         cf_creator.replaceFlag("TRAJECTORY_PATH", path +
                                co.SINGLE_TRAJECTORY_NAME)
         cf_creator.replaceFlag("SEED", random.randint(0, 999999))
-        cf_creator.replaceFlaf("TOTAL_PELE_STEPS",
+        cf_creator.replaceFlag("TOTAL_PELE_STEPS",
                                self.settings.total_PELE_steps)
 
         cf_creator.write(path + name)

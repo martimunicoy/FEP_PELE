@@ -65,11 +65,14 @@ class Command(object):
             settings.final_template,
             settings.atom_links)
 
-        builder = SamplingMethodBuilder(settings)
-        self._s_method = builder.createSamplingMethod()
+        smBuilder = SamplingMethodBuilder(settings)
+        self._s_method = smBuilder.createSamplingMethod()
 
         self._ligand_template = \
             self._alchemicalTemplateCreator.explicit_template
+
+        lambdasBuilder = Lambda.LambdasBuilder()
+        self._lambdas = lambdasBuilder.buildFromSettings(self.settings)
 
     @property
     def settings(self):
@@ -111,11 +114,18 @@ class Command(object):
     def ligand_template(self):
         return self._ligand_template
 
+    @property
+    def lambdas(self):
+        return self._lambdas
+
     def setPath(self, path):
         self._path = str(path)
 
     def setPID(self, PID):
         self._PID = int(PID)
+
+    def setLambdas(self, lambdas):
+        self._lambdas = lambdas
 
     def _run_with_splitted_lambdas(self):
         output = []

@@ -67,6 +67,14 @@ class Lambda(object):
     def folder_name(self):
         return str(round(self.value, 5))
 
+    @property
+    def path(self):
+        if (self.type == DUAL_LAMBDA):
+            return self.folder_name + '/'
+        else:
+            return str(self.index) + '_' + self.type + "/" + \
+                self.folder_name + '/'
+
     def __str__(self):
         return str(self.type) + ' Lambda: ' + str(self.value)
 
@@ -84,15 +92,27 @@ class Lambda(object):
 
 
 class LambdasBuilder(object):
-    def build(self, lambda_values, lambda_type=DUAL_LAMBDA):
+    def build(self, lambda_values, **kwargs):
         lambdas = []
         previous_lambda = None
 
         for index, lambda_value in enumerate(lambda_values):
-            new_lambda = Lambda(lambda_value, index,
-                                previous_lambda=previous_lambda,
-                                lambda_type=lambda_type)
+            new_lambda = Lambda(lambda_value, previous_lambda=previous_lambda,
+                                **kwargs)
             lambdas.append(new_lambda)
             previous_lambda = new_lambda
+
+        return lambdas
+
+    def buildFromSettings(self, settings):
+        lambdas = []
+
+        if (settings.splitted_lambdas):
+            lambdas += self.build(settings.lj_lambdas,
+                                  lambda_type=STERIC_LAMBDA, index=1)
+            lambdas += self.build(settings.c_lambdas,
+                                  lambda_type=COULOMBIC_LAMBDA, index=2)
+        else:
+            lambdas += self.build(settings.lambdas)
 
         return lambdas

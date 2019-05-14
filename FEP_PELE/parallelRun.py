@@ -2,6 +2,7 @@
 
 
 # Python imports
+import os
 import sys
 import argparse
 import copy
@@ -88,6 +89,12 @@ def prepareSettingsForLambda(original_settings, lambda_):
     settings.setGeneralPath(path)
     settings.setMinimizationPath(
         path + getLastFolderFromPath(original_settings.minimization_path))
+    settings.setSimulationPath(
+        original_settings.general_path +
+        os.path.relpath(original_settings.simulation_path))
+    settings.setCalculationPath(
+        original_settings.general_path +
+        os.path.relpath(original_settings.calculation_path))
 
     if (settings.initial_template is not None):
         settings.setInitialTemplate(setFile(settings.initial_template,
@@ -133,10 +140,12 @@ def setLambdas(command, lambda_):
 
     lambdas = [lambda_.value, ]
 
+    """
     # If command is exponential averaging, make pairs of lambdas
-    if (command.name == co.COMMAND_NAMES_DICT["EXPONENTIAL_AVERAGING"]):
+    if (command.name == co.COMMAND_NAMES_DICT["SERIAL_DE_CALCULATION"]):
         if (lambda_.next_lambda is not None):
             lambdas.append(lambda_.next_lambda.value)
+    """
 
     if (lambda_.type == Lambda.DUAL_LAMBDA):
         command.settings.setLambdas(lambdas)
@@ -146,14 +155,14 @@ def setLambdas(command, lambda_):
         command.settings.setCoulombicLambdas(lambdas)
 
 
-def parallelCommandRunner(original_settings, lambda_):
+def parallelCommandRunner(original_settings, lmb):
     pid = current_process().pid
 
     settings = prepareSettingsForLambda(original_settings,
-                                        lambda_)
+                                        lmb)
 
-    print(" - Running commands for {} lambda: {:6.4f}".format(lambda_.type,
-                                                              lambda_.value))
+    print(" - Running commands for {} lambda: {:6.4f}".format(lmb.type,
+                                                              lmb.value))
 
     sys.stdout = open(settings.general_path + str(pid) + ".out", "w")
     sys.stderr = open(settings.general_path + str(pid) + ".err", "w")
@@ -162,12 +171,14 @@ def parallelCommandRunner(original_settings, lambda_):
     commands = commandsBuilder.createCommands()
 
     for command in commands:
-        command.setPath(original_settings.simulation_path)
+        #command.setPath(original_settings.simulation_path)
         command.setPID(pid)
-        setLambdas(command, lambda_)
+        setLambdas(command, lmb)
         print(command.settings.lambdas)
         print(command.settings.lj_lambdas)
         print(command.settings.c_lambdas)
+        print(settings.simulation_path)
+        command.setLambdas([lmb, ])
 
         command.run()
 
@@ -178,19 +189,8 @@ def main():
     inputFileParser = InputFileParser(path_to_input_file)
     settings = inputFileParser.createSettings()
 
-    lambdas = []
     lambdasBuilder = Lambda.LambdasBuilder()
-
-    if (settings.splitted_lambdas):
-        lambdas += lambdasBuilder.build(settings.lj_lambdas,
-                                        Lambda.STERIC_LAMBDA)
-
-        lambdas += lambdasBuilder.build(settings.c_lambdas,
-                                        Lambda.COULOMBIC_LAMBDA)
-
-    else:
-        lambdas += lambdasBuilder.build(settings.lj_lambdas,
-                                        Lambda.DUAL_LAMBDA)
+    lambdas = lambdasBuilder.buildFromSettings(settings)
 
     number_of_parallel_simulations = 5
     max_parallel_commands = int(settings.number_of_processors /

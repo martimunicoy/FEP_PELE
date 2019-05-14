@@ -313,17 +313,14 @@ class Settings(object):
 
         if (key == co.CONTROL_FILE_DICT["MIN_FOLDER"]):
             value = self._getSingleValue(key, value)
-            value = self._checkFile(key, value)
             self.__minimization_path = asPath(str(value))
 
         if (key == co.CONTROL_FILE_DICT["SIM_FOLDER"]):
             value = self._getSingleValue(key, value)
-            value = self._checkFile(key, value)
             self.__simulation_path = asPath(str(value))
 
         if (key == co.CONTROL_FILE_DICT["CAL_FOLDER"]):
             value = self._getSingleValue(key, value)
-            value = self._checkFile(key, value)
             self.__calculation_path = asPath(str(value))
 
         elif (key == co.CONTROL_FILE_DICT["SAFETY_CHECK"]):

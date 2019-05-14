@@ -18,9 +18,9 @@ from FEP_PELE.PELETools.ControlFileCreator import \
     ControlFileFromTemplateCreator
 
 from FEP_PELE.Utils.InOut import create_directory
+from FEP_PELE.Utils.InOut import remove_directory
 from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import write_energies_report
-from FEP_PELE.Utils.InOut import write_recalculated_energies_report
 from FEP_PELE.Utils.InOut import join_splitted_models
 from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import writeLambdaTitle
@@ -47,69 +47,58 @@ class SerialdECalculation(Command):
     def run(self):
         self._start()
 
-        clear_directory(self.path)
+        create_directory(self.path)
 
-        if (self.settings.splitted_lambdas):
-            self._run_with_splitted_lambdas()
-        else:
-            self._run(self.settings.lambdas)
-
-        self._finish()
-
-    def _run(self, lambdas, lambdas_type=Lambda.DUAL_LAMBDA, num=0,
-             constant_lambda=None):
-
-        lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
         atoms_to_minimize = self._getAtomIdsToMinimize()
 
-        for lambda_ in lambdas:
-            if (self.checkPoint.check((self.name, str(num) +
-                                       str(lambda_.type) +
-                                       str(lambda_.value)))):
-                continue
+        for lmb in self.lambdas:
+            writeLambdaTitle(lmb)
 
-            writeLambdaTitle(lambda_)
-
-            clear_directory(self.path + co.MODELS_FOLDER)
+            create_directory(self.path + str(self.PID) + '_' +
+                             co.MODELS_FOLDER)
 
             print(" - Splitting PELE models")
-            simulation = self._getSimulation(lambda_, num)
+            simulation = self._getSimulation(lmb)
 
             self._splitModels(simulation)
 
-            self._createAlchemicalTemplate(lambda_, constant_lambda)
+            ctt_lmb = None
+            if (lmb.index == 2):
+                if (lmb.type == Lambda.COULOMBIC_LAMBDA):
+                    ctt_lmb = Lambda.Lambda(
+                        1.0, lambda_type=Lambda.STERIC_LAMBDA)
+                elif (lmb.type == Lambda.STERIC_LAMBDA):
+                    ctt_lmb = Lambda.Lambda(
+                        1.0, lambda_type=Lambda.COULOMBIC_LAMBDA)
 
-            self._calculateOriginalEnergies(simulation, lambda_, num)
+            self._createAlchemicalTemplate(lmb, ctt_lmb)
 
-            clear_directory(self.path)
+            self._calculateOriginalEnergies(simulation, lmb)
 
-            for shif_lambda in self.sampling_method.getShiftedLambdas(lambda_):
+            for shf_lmb in self.sampling_method.getShiftedLambdas(lmb):
                 print(" - Applying delta lambda " +
-                      str(round(shif_lambda.value - lambda_.value, 5)))
+                      str(round(shf_lmb.value - lmb.value, 5)))
 
-                self._createAlchemicalTemplate(shif_lambda, constant_lambda,
+                self._createAlchemicalTemplate(shf_lmb, ctt_lmb,
                                                gap=' ')
 
-                general_path = self._getGeneralPath(lambda_, num, shif_lambda)
+                general_path = self._getGeneralPath(lmb, shf_lmb)
                 clear_directory(general_path)
 
-                self._minimize(simulation, lambdas_type, general_path,
+                self._minimize(simulation, lmb.type, general_path,
                                atoms_to_minimize, gap=' ')
 
-                self._dECalculation(simulation, lambda_, shif_lambda,
-                                    general_path, num, gap=' ')
+                self._dECalculation(simulation, lmb, general_path, gap=' ')
 
-            self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
-                                  str(lambda_.value)))
+            remove_directory(self.path + str(self.PID) + '_' +
+                             co.MODELS_FOLDER)
 
-            clear_directory(self.path)
+        self._finish()
 
-        return []
-
-    def _getSimulation(self, lambda_, num):
+    def _getSimulation(self, lambda_):
         path = self.settings.simulation_path
         if (lambda_.type != Lambda.DUAL_LAMBDA):
-            path += str(num) + '_' + lambda_.type + "/"
+            path += str(lambda_.index) + '_' + lambda_.type + "/"
         path += str(lambda_.value) + "/"
 
         simulation = Simulation(path, sim_type="PELE",
@@ -124,14 +113,10 @@ class SerialdECalculation(Command):
         for report in simulation.iterateOverReports:
             self._trajectoryWriterLoop(report)
 
-    def _calculateOriginalEnergies(self, simulation, lambda_, num, gap=''):
+    def _calculateOriginalEnergies(self, simulation, lmb, gap=''):
         print("{} - Calculating original energies".format(gap))
 
-        path = self.path
-        if (lambda_.type != Lambda.DUAL_LAMBDA):
-            path += str(num) + '_' + lambda_.type + "/"
-        path += lambda_.folder_name + '/'
-
+        path = self.path + lmb.path
         clear_directory(path)
 
         for report in simulation.iterateOverReports:
@@ -152,22 +137,21 @@ class SerialdECalculation(Command):
             for report in simulation.iterateOverReports:
                 for model_id in range(0, report.trajectory.models.number):
                     file_name = str(model_id) + '-' + report.trajectory.name
-                    original_pdb = self.path + co.MODELS_FOLDER + file_name
+                    original_pdb = self.path + str(self.PID) + '_' +\
+                        co.MODELS_FOLDER + file_name
                     copyFile(original_pdb, general_path)
 
-    def _dECalculation(self, simulation, lambda_, shif_lambda, general_path,
-                       num, gap=''):
+    def _dECalculation(self, simulation, lmb, general_path, gap=''):
         print("{} - Calculating energetic differences".format(gap))
 
         for report in simulation.iterateOverReports:
-            self._PELERecalculatorLoop(lambda_, shif_lambda, general_path, num,
-                                       report)
+            self._PELERecalculatorLoop(lmb, general_path, report)
 
     def _trajectoryWriterLoop(self, report_file):
         for model_id in range(0, report_file.trajectory.models.number):
 
-            model_name = self.path + co.MODELS_FOLDER + str(model_id) + \
-                '-' + report_file.trajectory.name
+            model_name = self.path + str(self.PID) + '_' + co.MODELS_FOLDER + \
+                str(model_id) + '-' + report_file.trajectory.name
 
             report_file.trajectory.writeModel(model_id, model_name)
 
@@ -180,31 +164,34 @@ class SerialdECalculation(Command):
         energies = []
 
         for model_id in range(0, report_file.trajectory.models.number):
-            model_name = self.path + co.MODELS_FOLDER + str(model_id) + \
-                '-' + report_file.trajectory.name
+            model_name = self.path + str(self.PID) + '_' + co.MODELS_FOLDER + \
+                str(model_id) + '-' + report_file.trajectory.name
 
-            logfile_name = path + co.LOGFILE_NAME.format()
+            logfile_name = path + co.LOGFILE_NAME.format(self.PID)
 
             # Write recalculation control file
             self._writeRecalculationControlFile(
                 self.settings.sp_control_file,
                 model_name,
-                self.path + co.SINGLE_POINT_CF_NAME.format(self.PID),
+                self.path + str(self.PID) + '_' + co.MODELS_FOLDER +
+                co.SINGLE_POINT_CF_NAME.format(self.PID),
                 logfile_name=logfile_name)
 
             # Run PELE and extract energy prediction
             energies.append(self._getPELEEnergyPrediction(runner))
 
-        write_recalculated_energies_report(path + report_file.name, energies)
+        write_energies_report(path, report_file, energies)
 
     def _PELEMinimizerLoop(self, general_path, atoms_to_minimize, report_file):
         create_directory(general_path)
 
+        path = self.path + str(self.PID) + '_' + co.MODELS_FOLDER
+
         for model_id, active in enumerate(report_file.models):
             # Set initial variables
             file_name = str(model_id) + '-' + report_file.trajectory.name
-            original_pdb = self.path + co.MODELS_FOLDER + file_name
-            logfile_name = self.path + co.LOGFILE_NAME.format(self.PID)
+            original_pdb = path + file_name
+            logfile_name = path + co.LOGFILE_NAME.format(self.PID)
             minimized_pdb = general_path + file_name
 
             # Define new PELERunner
@@ -215,48 +202,38 @@ class SerialdECalculation(Command):
             self._writeRecalculationControlFile(
                 self.settings.pp_control_file,
                 original_pdb,
-                self.path + co.POST_PROCESSING_CF_NAME.format(self.PID),
+                path + co.POST_PROCESSING_CF_NAME.format(self.PID),
                 logfile_name=logfile_name,
                 trajectory_name=minimized_pdb,
                 atoms_to_minimize=atoms_to_minimize)
 
-            runner.run(self.path + co.POST_PROCESSING_CF_NAME.format(self.PID))
+            runner.run(path + co.POST_PROCESSING_CF_NAME.format(self.PID))
 
             self._applyMinimizedDistancesTo(original_pdb, minimized_pdb)
 
-    def _PELERecalculatorLoop(self, lambda_, shifted_lambda, general_path, num,
-                              report_file):
+    def _PELERecalculatorLoop(self, lmb, general_path, report_file):
         create_directory(general_path)
 
-        original_energies = self._getOriginalEnergies(
-            self._getGeneralPath(lambda_, num) + report_file.name)
         energies = []
         rmsds = []
+        path = self.path + str(self.PID) + '_' + co.MODELS_FOLDER
 
         for model_id, active in enumerate(report_file.models):
             # Set initial variables
             file_name = str(model_id) + '-' + report_file.trajectory.name
-            original_pdb = self.path + co.MODELS_FOLDER + file_name
+            original_pdb = path + file_name
             shifted_pdb = general_path + file_name
-            logfile_name = self.path + co.LOGFILE_NAME.format(self.PID)
+            logfile_name = path + co.LOGFILE_NAME.format(self.PID)
 
             # Define new PELERunner
             runner = PELERunner(self.settings.serial_pele,
                                 number_of_processors=1)
 
-            # In case bad model was previously removed
-            """
-            if (not active):
-                print("  - Warning: skipping bad model from path: " +
-                      "\'{}\'".format(shifted_pdb))
-                continue
-            """
-
             # Write recalculation control file
             self._writeRecalculationControlFile(
                 self.settings.sp_control_file,
                 shifted_pdb,
-                self.path + co.SINGLE_POINT_CF_NAME.format(self.PID),
+                path + co.SINGLE_POINT_CF_NAME.format(self.PID),
                 logfile_name=logfile_name)
 
             # Run PELE and extract energy prediction
@@ -267,8 +244,7 @@ class SerialdECalculation(Command):
             rmsds.append(rmsd)
 
         # Write trajectories and reports
-        write_energies_report(general_path, report_file, energies,
-                              original_energies, rmsds)
+        write_energies_report(general_path, report_file, energies, rmsds)
         join_splitted_models(general_path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
@@ -313,21 +289,23 @@ class SerialdECalculation(Command):
 
         return final.calculateRMSDWith(initial)
 
-    def _getGeneralPath(self, lambda_, num, shifted_lambda=None):
+    def _getGeneralPath(self, lmb, shf_lmb=None):
         general_path = self.path
-        if (lambda_.type != Lambda.DUAL_LAMBDA):
-            general_path += str(num) + '_' + lambda_.type + "/"
-        if (shifted_lambda is not None):
-            general_path += self._getLambdaFolderName(lambda_, shifted_lambda)
+        if (lmb.type != Lambda.DUAL_LAMBDA):
+            general_path += str(lmb.index) + '_' + lmb.type + "/"
+        if (shf_lmb is not None):
+            general_path += self._getLambdaFolderName(lmb, shf_lmb)
         else:
-            general_path += lambda_.folder_name
+            general_path += lmb.folder_name
         general_path += "/"
 
         return general_path
 
     def _getPELEEnergyPrediction(self, runner):
+        path = self.path + str(self.PID) + '_' + co.MODELS_FOLDER
+
         try:
-            output = runner.run(self.path +
+            output = runner.run(path +
                                 co.SINGLE_POINT_CF_NAME.format(self.PID))
         except SystemExit as exception:
             print("dECalculation error: \n" + str(exception))

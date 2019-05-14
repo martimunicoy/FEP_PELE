@@ -22,7 +22,6 @@ from FEP_PELE.PELETools.ControlFileCreator import \
 from FEP_PELE.Utils.InOut import create_directory
 from FEP_PELE.Utils.InOut import clear_directory
 from FEP_PELE.Utils.InOut import write_energies_report
-from FEP_PELE.Utils.InOut import write_recalculated_energies_report
 from FEP_PELE.Utils.InOut import join_splitted_models
 from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import writeLambdaTitle
@@ -208,7 +207,7 @@ class dECalculation(Command):
             # Run PELE and extract energy prediction
             energies.append(self._getPELEEnergyPrediction(runner, pid))
 
-        write_recalculated_energies_report(path + report_file.name, energies)
+        write_energies_report(path, report_file, energies)
 
     def _parallelPELEMinimizerLoop(self, general_path, atoms_to_minimize,
                                    report_file):
@@ -245,9 +244,6 @@ class dECalculation(Command):
         create_directory(general_path)
 
         pid = current_process().pid
-
-        original_energies = self._getOriginalEnergies(
-            self._getGeneralPath(lambda_, num) + report_file.name)
         energies = []
         rmsds = []
 
@@ -285,8 +281,7 @@ class dECalculation(Command):
             rmsds.append(rmsd)
 
         # Write trajectories and reports
-        write_energies_report(general_path, report_file, energies,
-                              original_energies, rmsds)
+        write_energies_report(general_path, report_file, energies, rmsds)
         join_splitted_models(general_path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
