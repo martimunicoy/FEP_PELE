@@ -44,39 +44,23 @@ class LambdasSampling(Command):
 
         create_directory(self.settings.simulation_path)
 
-        if (self.settings.splitted_lambdas):
-            self._run_with_splitted_lambdas()
-        else:
-            lambdas = self.settings.lambdas
-            self._run(lambdas, Lambda.DUAL_LAMBDA)
+        self._run()
 
         self._finish()
 
-    def _run(self, lambdas, lambdas_type, num=0,
-             constant_lambda=None):
-
-        lambdas = self.lambdasBuilder.build(lambdas, lambda_type=lambdas_type)
-
-        """
-        # In DoubleWide sampling, sampling is not performed on edging lambdas
-        if (self.settings.sampling_method == METHODS_DICT["DOUBLE_WIDE"]):
-            if (len(lambdas) > 1):
-                lambdas = lambdas[1:-1]
-            else:
-                return []
-        """
-
-        for lambda_ in lambdas:
-            if (self.checkPoint.check((self.name, str(num) +
-                                       str(lambda_.type) +
-                                       str(lambda_.value)))):
+    def _run(self):
+        for lmb in self.lambdas:
+            if (self.checkPoint.check((self.name, str(lmb.index) +
+                                       str(lmb.type) + str(lmb.value)))):
                 continue
 
-            writeLambdaTitle(lambda_)
+            writeLambdaTitle(lmb)
 
             print(" - Creating alchemical template")
 
-            self._createAlchemicalTemplate(lambda_, constant_lambda)
+            ctt_lmb = self.getConstantLambda(lmb)
+
+            self._createAlchemicalTemplate(lmb, ctt_lmb)
 
             print(" - Running PELE")
 
@@ -86,10 +70,10 @@ class LambdasSampling(Command):
 
             print("  - Simulation")
 
-            self._simulate(lambda_, num)
+            self._simulate(lmb, lmb.index)
 
-            self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
-                                  str(lambda_.value)))
+            self.checkPoint.save((self.name, str(lmb.index) + str(lmb.type) +
+                                  str(lmb.value)))
 
         return []
 
@@ -110,11 +94,11 @@ class LambdasSampling(Command):
             print("LambdasSimulation error: \n" + str(exception))
             sys.exit(1)
 
-    def _simulate(self, lambda_, num):
+    def _simulate(self, lmb, num):
         path = self.path
-        if (lambda_.type != Lambda.DUAL_LAMBDA):
-            path += str(num) + '_' + lambda_.type + "/"
-        path += str(lambda_.value) + "/"
+        if (lmb.type != Lambda.DUAL_LAMBDA):
+            path += str(num) + '_' + lmb.type + "/"
+        path += str(lmb.value) + "/"
 
         control_file_name = getFileFromPath(self.settings.sim_control_file)
 

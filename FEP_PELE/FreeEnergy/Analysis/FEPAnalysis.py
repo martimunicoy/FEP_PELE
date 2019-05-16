@@ -7,7 +7,7 @@ from .Calculators import zwanzigEquation
 from .Calculators import calculateStandardDeviationOfMean
 from .Calculators import calculateMean
 from .Calculators import squaredSum
-from .Plotters import dEDistributionPlot
+from .Plotters import dEDistributionPlot, dEVariationPlot
 
 from FEP_PELE.FreeEnergy.Constants import SAMPLING_METHODS_DICT as METHODS_DICT
 from FEP_PELE.FreeEnergy.Constants import DIRECTION_LABELS
@@ -145,3 +145,14 @@ class FEPAnalysis(object):
         plotter = dEDistributionPlot(energies, self.averages)
         plotter.plotHistogram(40, range=(-1, 1), facecolor='blue',
                               alpha=0.5)
+
+    def plotdEVariation(self):
+        energies = {}
+
+        for lambda_folder in self.lambda_folders:
+            key = (lambda_folder.initial_lambda, lambda_folder.final_lambda,
+                   lambda_folder.type)
+            energies[key] = lambda_folder.getDeltaEnergyValues()
+
+        plotter = dEVariationPlot(energies)
+        plotter.plotGraph()

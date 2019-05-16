@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
 
+# Python imports
+import numpy as np
+
+
 # FEP_PELE imports
 from FEP_PELE.Utils.InOut import checkPath
 from FEP_PELE.Utils.InOut import getLastFolderFromPath
@@ -130,13 +134,25 @@ class LambdaFolder(object):
         return "Lambda Folder from {} to {}".format(self.initial_lambda,
                                                     self.final_lambda)
 
+    def _getEnergiesFrom(self, path):
+        report = Report(getPathFromFile(path), getFileFromPath(path),
+                        '_'.join(getFileFromPath(path).split('_')[:-1]) +
+                        '_', None)
+
+        return report.getMetric(co.PP_ABSOLUTE_ENERGIES_COL)
+
     def _getDeltaEnergiesFromReport(self, report):
         energies = []
 
-        report_steps = report.getMetric(co.PP_STEPS_COL)
-        report_energies = report.getMetric(co.PP_DELTA_ENERGIES_COL)
+        steps = report.getMetric(co.PP_STEPS_COL)
+        i_energies = np.array(
+            self._getEnergiesFrom(self.path + '../' +
+                                  str(round(self.initial_lambda, 5)) +
+                                  '/' + report.name))
+        f_energies = np.array(
+            report.getMetric(co.PP_ABSOLUTE_ENERGIES_COL))
 
-        if (len(report_energies) == 0):
+        if (len(f_energies) == 0):
             print("  - LambdaFolder Warning: found an empty report file " +
                   "{}".format(report.path))
             return energies
@@ -152,20 +168,21 @@ class LambdaFolder(object):
         report_energies = report_energies[1:]
         """
 
-        last_accepted_step = int(report_steps[0])
-        last_accepted_energy = report_energies[0]
+        last_accepted_step = int(steps[0])
+        last_accepted_dE = f_energies[0] - i_energies[0]
 
-        for step, energy in zip(map(int, report_steps[1:]),
-                                report_energies[1:]):
+        for step, e0, e1 in zip(map(int, steps[1:]),
+                                i_energies[1:],
+                                f_energies[1:]):
             for i in range(0, step - last_accepted_step):
-                energies.append(last_accepted_energy)
+                energies.append(last_accepted_dE)
 
             last_accepted_step = int(step)
-            last_accepted_energy = energy
+            last_accepted_dE = e1 - e0
 
         if (self.total_PELE_steps is not None):
             for i in range(0, self.total_PELE_steps - last_accepted_step + 1):
-                energies.append(last_accepted_energy)
+                energies.append(last_accepted_dE)
 
         return energies
 
@@ -200,15 +217,53 @@ class LambdaFolder(object):
                             '_',
                             None)
 
-            report_energies = report.getMetric(co.PP_DELTA_ENERGIES_COL)
-            if (len(report_energies) == 0):
-                print("  - LambdaFolder Warning: found an empty report file " +
-                      "{}".format(report.path))
-                continue
+            dEs = self._getDeltaEnergiesFromReport(report)
 
-            # Discard first energy
-            report_energies = report_energies[1:]
-
-            energies_by_file[file] = report_energies
+            energies_by_file[file] = dEs
 
         return energies_by_file
+
+
+def filterLambdaFoldersByInitialLambda(lambda_folders, initial_lambda):
+    filtered_lambdas = []
+
+    for lmb in lambda_folders:
+        if ((initial_lambda.value == lmb.initial_lambda) and
+                (initial_lambda.type == lmb.type)):
+            filtered_lambdas.append(lmb)
+
+    return filtered_lambdas
+
+
+def filterLambdaFoldersByFinalLambda(lambda_folders, final_lambda):
+    filtered_lambdas = []
+
+    for lmb in lambda_folders:
+        if ((final_lambda.value == lmb.final_lambda) and
+                (final_lambda.type == lmb.type)):
+            filtered_lambdas.append(lmb)
+
+    return filtered_lambdas
+
+
+def searchLambdaFolder(lambda_folders, initial_lambda=None, final_lambda=None):
+    if ((initial_lambda is None) and (final_lambda is None)):
+        raise NameError("Either an initial lambda or a final lambda must be " +
+                        "supplied")
+
+    filtered_lambdas = lambda_folders
+
+    if (initial_lambda is not None):
+        filtered_lambdas = filterLambdaFoldersByInitialLambda(filtered_lambdas,
+                                                              initial_lambda)
+
+    if (final_lambda is not None):
+        filtered_lambdas = filterLambdaFoldersByFinalLambda(filtered_lambdas,
+                                                            final_lambda)
+
+    if (len(filtered_lambdas) == 0):
+        raise NameError("No lambda folder was found with initial lambda " +
+                        "{} and final lambda {}".format(initial_lambda,
+                                                        final_lambda))
+
+    return filtered_lambdas

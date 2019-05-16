@@ -49,7 +49,8 @@ class PELERunner(object):
 
     def checkSRun(self):
         try:
-            output = check_output(["which", "srun"], stderr=STDOUT)
+            output = check_output(["which", "srun"],
+                                  stderr=STDOUT).decode('utf-8')
         except Exception as e:
             output = str(e.output)
 

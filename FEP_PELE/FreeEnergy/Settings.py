@@ -41,6 +41,7 @@ class Settings(object):
         self.__sampling_method = co.DEF_SAMPLING_METHOD
         self.__number_of_processors = co.DEF_NUMBER_OF_PROCESSORS
         self.__total_pele_steps = co.DEF_TOTAL_PELE_STEPS
+        self.__parallel_PELE_runs = co.DEF_PARALLEL_PELE_RUNS
         self.__commands = co.DEF_COMMANDS
         self.__min_control_file = co.DEF_MIN_CONTROL_FILE
         self.__sim_control_file = co.DEF_SIM_CONTROL_FILE
@@ -111,6 +112,10 @@ class Settings(object):
     @property
     def total_PELE_steps(self):
         return self.__total_PELE_steps
+
+    @property
+    def parallel_PELE_runs(self):
+        return self.__parallel_PELE_runs
 
     @property
     def command_names(self):
@@ -283,6 +288,11 @@ class Settings(object):
             value = self._getSingleValue(key, value)
             self._checkPositiveInteger(key, value)
             self.__total_PELE_steps = int(value)
+
+        elif (key == co.CONTROL_FILE_DICT["PARALLEL_PELE_RUNS"]):
+            value = self._getSingleValue(key, value)
+            self._checkPositiveInteger(key, value)
+            self.__parallel_PELE_runs = int(value)
 
         elif (key == co.CONTROL_FILE_DICT["COMMANDS"]):
             value = self._getCommaSeparatedList(key, value)

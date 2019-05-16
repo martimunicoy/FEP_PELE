@@ -127,6 +127,17 @@ class Command(object):
     def setLambdas(self, lambdas):
         self._lambdas = lambdas
 
+    def getConstantLambda(self, lmb):
+        ctt_lmb = None
+        if (lmb.index == 2):
+            if (lmb.type == Lambda.COULOMBIC_LAMBDA):
+                ctt_lmb = Lambda.Lambda(
+                    1.0, lambda_type=Lambda.STERIC_LAMBDA)
+            elif (lmb.type == Lambda.STERIC_LAMBDA):
+                ctt_lmb = Lambda.Lambda(
+                    1.0, lambda_type=Lambda.COULOMBIC_LAMBDA)
+        return ctt_lmb
+
     def _run_with_splitted_lambdas(self):
         output = []
 

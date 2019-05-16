@@ -68,15 +68,15 @@ def setFile(path_to_file, relative_path):
     return path_to_file
 
 
-def prepareSettingsForLambda(original_settings, lambda_):
+def prepareSettingsForLambda(original_settings, lmb):
     settings = copy.deepcopy(original_settings)
 
     path = settings.general_path + 'runs/'
     relative_path = '../../'
-    if (lambda_.type != Lambda.DUAL_LAMBDA):
-        path += lambda_.type + '/'
+    if (lmb.type != Lambda.DUAL_LAMBDA):
+        path += lmb.type + '/'
         relative_path += '../'
-    path += lambda_.folder_name + "/"
+    path += lmb.folder_name + "/"
 
     clear_directory(path)
     copyFolder(settings.general_path + 'DataLocal',
@@ -133,28 +133,6 @@ def prepareSettingsForLambda(original_settings, lambda_):
     return settings
 
 
-def setLambdas(command, lambda_):
-    command.settings.setLambdas([])
-    command.settings.setStericLambdas([])
-    command.settings.setCoulombicLambdas([])
-
-    lambdas = [lambda_.value, ]
-
-    """
-    # If command is exponential averaging, make pairs of lambdas
-    if (command.name == co.COMMAND_NAMES_DICT["SERIAL_DE_CALCULATION"]):
-        if (lambda_.next_lambda is not None):
-            lambdas.append(lambda_.next_lambda.value)
-    """
-
-    if (lambda_.type == Lambda.DUAL_LAMBDA):
-        command.settings.setLambdas(lambdas)
-    elif (lambda_.type == Lambda.STERIC_LAMBDA):
-        command.settings.setStericLambdas(lambdas)
-    elif (lambda_.type == Lambda.COULOMBIC_LAMBDA):
-        command.settings.setCoulombicLambdas(lambdas)
-
-
 def parallelCommandRunner(original_settings, lmb):
     pid = current_process().pid
 
@@ -170,17 +148,15 @@ def parallelCommandRunner(original_settings, lmb):
     commandsBuilder = CommandsBuilder(settings)
     commands = commandsBuilder.createCommands()
 
-    for command in commands:
-        #command.setPath(original_settings.simulation_path)
-        command.setPID(pid)
-        setLambdas(command, lmb)
-        print(command.settings.lambdas)
-        print(command.settings.lj_lambdas)
-        print(command.settings.c_lambdas)
-        print(settings.simulation_path)
-        command.setLambdas([lmb, ])
+    if (len(commands) > 1):
+        raise IOError("Only a single command is accepted by parallel runner")
 
-        command.run()
+    command = commands[0]
+
+    command.setPID(pid)
+    command.setLambdas([lmb, ])
+
+    command.run()
 
 
 def main():
@@ -192,11 +168,15 @@ def main():
     lambdasBuilder = Lambda.LambdasBuilder()
     lambdas = lambdasBuilder.buildFromSettings(settings)
 
-    number_of_parallel_simulations = 5
-    max_parallel_commands = int(settings.number_of_processors /
-                                number_of_parallel_simulations)
+    if (len(settings.command_names) > 1):
+        raise IOError("Only a single command is accepted by parallel runner")
 
-    settings.setNumberOfProcessors(number_of_parallel_simulations)
+    max_parallel_commands = settings.number_of_processors
+    if (settings.command_names[0] ==
+            co.COMMAND_NAMES_DICT["LAMBDAS_SAMPLING"]):
+        max_parallel_commands = int(settings.number_of_processors /
+                                    settings.parallel_PELE_runs)
+        settings.setNumberOfProcessors(settings.parallel_PELE_runs)
 
     pCommandRunner = partial(parallelCommandRunner, settings)
 

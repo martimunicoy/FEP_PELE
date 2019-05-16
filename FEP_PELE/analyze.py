@@ -46,13 +46,17 @@ def main():
 
     print(" - Analyzing results")
 
-    analysis = FEPAnalysis.FEPAnalysis(lambda_folders,
-                                       com.settings.sampling_method,
-                                       divisions=divisions)
+    analysis = FEPAnalysis.FEPAnalysis(
+        lambda_folders, com.settings.sampling_method,
+        divisions=max(1, int((settings.parallel_PELE_runs - 1) / 2)))
 
     print(" - Plotting energetic histogram")
 
     analysis.plotHistogram()
+
+    print(" - Plotting energetic graph")
+
+    analysis.plotdEVariation()
 
     analysis.printResults()
 

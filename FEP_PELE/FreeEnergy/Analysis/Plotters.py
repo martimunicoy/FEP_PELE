@@ -134,3 +134,97 @@ class dEDistributionPlot(object):
         else:
             sys.stdout.write('\a')
             sys.stdout.flush()
+
+
+class dEVariationPlot(object):
+    def __init__(self, values, first_plot=0):
+        self.lambdas = list(values.keys())
+        self.values = list(values.values())
+        self.total_plots = len(values)
+        if (first_plot < self.total_plots):
+            self.current_plot = first_plot
+        else:
+            self.current_plot = 0
+
+        # Initiate plot
+        self.fig = plt.figure()
+        self.fig.canvas.mpl_connect('key_press_event', self._key_pressed)
+        self.ax = self.fig.add_subplot(111)
+
+        # Initiate empty args and kwargs
+        self.args = []
+        self.kwargs = {}
+
+    def plotGraph(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+        self._setTitle()
+        self._setAxisLabels()
+        self.ax.plot(self.values[self.current_plot], *self.args,
+                     **self.kwargs)
+
+        plt.show()
+
+    def _setTitle(self):
+        plt.suptitle(r'$\Delta E$ variation', fontsize=12)
+        plt.title("({} of {})".format(self.current_plot + 1,
+                                      self.total_plots), fontsize=10)
+        title = self.ax.text(0.85, 0.80, "",
+                             bbox={'facecolor': 'w', 'alpha': 0.5, 'pad': 3},
+                             transform=self.ax.transAxes, ha="center")
+
+        lambda_shift = self.lambdas[self.current_plot][:2]
+        lambda_type = self.lambdas[self.current_plot][2]
+
+        title.set_text(lambda_type + '\n' +
+                       r'$\lambda_{0} =$' +
+                       "{}".format(lambda_shift[0]) + '\n' +
+                       r'$\lambda_{1} =$' +
+                       "{}".format(lambda_shift[1]))
+
+    def _setAxisLabels(self):
+        plt.ylabel('PELE accepted steps')
+        plt.ylabel(r'$\Delta E$')
+
+    def _key_pressed(self, event):
+        if (event.key == "left"):
+            self._previous(event)
+        elif (event.key == "right"):
+            self._next(event)
+
+    def _previous(self, event):
+        if (self.current_plot > 0):
+            self.current_plot -= 1
+
+            self.ax.clear()
+
+            self._setTitle()
+            self._setAxisLabels()
+
+            self.ax.plot(self.values[self.current_plot], *self.args,
+                         **self.kwargs)
+
+            plt.draw()
+        else:
+            sys.stdout.write('\a')
+            sys.stdout.flush()
+
+    def _next(self, event):
+        if (self.current_plot < self.total_plots - 1):
+            self.current_plot += 1
+
+            self.ax.clear()
+
+            self._setTitle()
+            self._setAxisLabels()
+
+            self.ax.plot(self.values[self.current_plot], *self.args,
+                         **self.kwargs)
+
+            plt.draw()
+
+            plt.draw()
+        else:
+            sys.stdout.write('\a')
+            sys.stdout.flush()
