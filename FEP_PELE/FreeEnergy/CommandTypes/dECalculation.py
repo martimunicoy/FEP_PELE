@@ -50,62 +50,58 @@ class dECalculation(Command):
 
         clear_directory(self.path)
 
-        if (self.settings.splitted_lambdas):
-            self._run_with_splitted_lambdas()
-        else:
-            self._run(self.settings.lambdas)
-
-        self._finish()
-
-    def _run(self, lambdas, lambdas_type=Lambda.DUAL_LAMBDA, num=0,
-             constant_lambda=None):
-
-        lambdas = self.lambdasBuilder.build(lambdas, lambdas_type)
         atoms_to_minimize = self._getAtomIdsToMinimize()
 
-        for lambda_ in lambdas:
-            if (self.checkPoint.check((self.name, str(num) +
-                                       str(lambda_.type) +
-                                       str(lambda_.value)))):
+        for lmb in self.lambdas:
+            if (self.checkPoint.check((self.name, str(lmb.index) +
+                                       str(lmb.type) +
+                                       str(lmb.value)))):
                 continue
 
-            writeLambdaTitle(lambda_)
+            writeLambdaTitle(lmb)
 
             clear_directory(self.path + co.MODELS_FOLDER)
 
             print(" - Splitting PELE models")
-            simulation = self._getSimulation(lambda_, num)
+            simulation = self._getSimulation(lmb, lmb.index)
 
             self._splitModels(simulation)
 
-            self._createAlchemicalTemplate(lambda_, constant_lambda)
+            ctt_lmb = None
+            if (lmb.index == 2):
+                if (lmb.type == Lambda.COULOMBIC_LAMBDA):
+                    ctt_lmb = Lambda.Lambda(
+                        1.0, lambda_type=Lambda.STERIC_LAMBDA)
+                elif (lmb.type == Lambda.STERIC_LAMBDA):
+                    ctt_lmb = Lambda.Lambda(
+                        1.0, lambda_type=Lambda.COULOMBIC_LAMBDA)
 
-            self._calculateOriginalEnergies(simulation, lambda_, num)
+            self._createAlchemicalTemplate(lmb, ctt_lmb)
 
-            clear_directory(self.path)
+            self._calculateOriginalEnergies(simulation, lmb, lmb.index)
 
-            for shif_lambda in self.sampling_method.getShiftedLambdas(lambda_):
+            for shf_lmb in self.sampling_method.getShiftedLambdas(lmb):
                 print(" - Applying delta lambda " +
-                      str(round(shif_lambda.value - lambda_.value, 5)))
+                      str(round(shf_lmb.value - lmb.value, 5)))
 
-                self._createAlchemicalTemplate(shif_lambda, constant_lambda,
+                self._createAlchemicalTemplate(shf_lmb, ctt_lmb,
                                                gap=' ')
 
-                general_path = self._getGeneralPath(lambda_, num, shif_lambda)
+                general_path = self._getGeneralPath(lmb, lmb.index, shf_lmb)
                 clear_directory(general_path)
 
-                self._minimize(simulation, lambdas_type, general_path,
+                self._minimize(simulation, lmb.type, general_path,
                                atoms_to_minimize, gap=' ')
 
-                self._dECalculation(simulation, lambda_, shif_lambda,
-                                    general_path, num, gap=' ')
+                self._dECalculation(simulation, lmb, shf_lmb,
+                                    general_path, lmb.index, gap=' ')
 
-            self.checkPoint.save((self.name, str(num) + str(lambda_.type) +
-                                  str(lambda_.value)))
+            self.checkPoint.save((self.name, str(lmb.index) + str(lmb.type) +
+                                  str(lmb.value)))
 
             clear_directory(self.path)
 
-        return []
+        self._finish()
 
     def _getSimulation(self, lambda_, num):
         path = self.settings.simulation_path

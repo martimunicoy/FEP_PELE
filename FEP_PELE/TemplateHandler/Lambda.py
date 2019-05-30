@@ -104,14 +104,20 @@ class LambdasBuilder(object):
 
         return lambdas
 
-    def buildFromSettings(self, settings):
+    def buildFromSettings(self, settings, reverse=False):
         lambdas = []
 
         if (settings.splitted_lambdas):
-            lambdas += self.build(settings.lj_lambdas,
-                                  lambda_type=STERIC_LAMBDA, index=1)
-            lambdas += self.build(settings.c_lambdas,
-                                  lambda_type=COULOMBIC_LAMBDA, index=2)
+            if (not reverse):
+                lambdas += self.build(settings.lj_lambdas,
+                                      lambda_type=STERIC_LAMBDA, index=1)
+                lambdas += self.build(settings.c_lambdas,
+                                      lambda_type=COULOMBIC_LAMBDA, index=2)
+            else:
+                lambdas += self.build(settings.c_lambdas,
+                                      lambda_type=COULOMBIC_LAMBDA, index=1)
+                lambdas += self.build(settings.lj_lambdas,
+                                      lambda_type=STERIC_LAMBDA, index=2)
         else:
             lambdas += self.build(settings.lambdas)
 

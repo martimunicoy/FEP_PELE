@@ -72,7 +72,9 @@ class Command(object):
             self._alchemicalTemplateCreator.explicit_template
 
         lambdasBuilder = Lambda.LambdasBuilder()
-        self._lambdas = lambdasBuilder.buildFromSettings(self.settings)
+        self._lambdas = lambdasBuilder.buildFromSettings(
+            self.settings,
+            reverse=not self._alchemicalTemplateCreator.explicit_is_final)
 
     @property
     def settings(self):

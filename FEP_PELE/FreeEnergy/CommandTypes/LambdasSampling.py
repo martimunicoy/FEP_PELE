@@ -70,7 +70,7 @@ class LambdasSampling(Command):
 
             print("  - Simulation")
 
-            self._simulate(lmb, lmb.index)
+            self._simulate(lmb)
 
             self.checkPoint.save((self.name, str(lmb.index) + str(lmb.type) +
                                   str(lmb.value)))
@@ -94,10 +94,10 @@ class LambdasSampling(Command):
             print("LambdasSimulation error: \n" + str(exception))
             sys.exit(1)
 
-    def _simulate(self, lmb, num):
+    def _simulate(self, lmb):
         path = self.path
         if (lmb.type != Lambda.DUAL_LAMBDA):
-            path += str(num) + '_' + lmb.type + "/"
+            path += str(lmb.index) + '_' + lmb.type + "/"
         path += str(lmb.value) + "/"
 
         control_file_name = getFileFromPath(self.settings.sim_control_file)
