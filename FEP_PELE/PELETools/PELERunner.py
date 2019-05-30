@@ -79,7 +79,6 @@ class PELERunner(object):
         return output.decode('utf-8').strip()
 
     def _mpi_run(self, control_file_path):
-        print(self.srun)
         if (self.srun):
             args = ["srun", "-n", str(self.__number_of_processors),
                     self.__executable_path, control_file_path]

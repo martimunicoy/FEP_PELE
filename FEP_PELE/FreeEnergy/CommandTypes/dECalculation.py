@@ -25,9 +25,7 @@ from FEP_PELE.Utils.InOut import write_energies_report
 from FEP_PELE.Utils.InOut import join_splitted_models
 from FEP_PELE.Utils.InOut import remove_splitted_models
 from FEP_PELE.Utils.InOut import writeLambdaTitle
-from FEP_PELE.Utils.InOut import copyFile
 
-from FEP_PELE.Tools.PDBTools import PDBParser
 
 # Script information
 __author__ = "Marti Municoy"
@@ -49,8 +47,6 @@ class dECalculation(Command):
         self._start()
 
         clear_directory(self.path)
-
-        atoms_to_minimize = self._getAtomIdsToMinimize()
 
         for lmb in self.lambdas:
             if (self.checkPoint.check((self.name, str(lmb.index) +
@@ -90,11 +86,7 @@ class dECalculation(Command):
                 general_path = self._getGeneralPath(lmb, lmb.index, shf_lmb)
                 clear_directory(general_path)
 
-                self._minimize(simulation, lmb.type, general_path,
-                               atoms_to_minimize, gap=' ')
-
-                self._dECalculation(simulation, lmb, shf_lmb,
-                                    general_path, lmb.index, gap=' ')
+                self._dECalculation(simulation, general_path, gap=' ')
 
             self.checkPoint.save((self.name, str(lmb.index) + str(lmb.type) +
                                   str(lmb.value)))
@@ -139,32 +131,11 @@ class dECalculation(Command):
             pool.map(originalEnergiesCalculator,
                      simulation.iterateOverReports)
 
-    def _minimize(self, simulation, lambdas_type, general_path,
-                  atoms_to_minimize, gap=''):
-        if ((self.settings.reminimize) and
-            ((lambdas_type == Lambda.DUAL_LAMBDA) or
-             (lambdas_type == Lambda.STERIC_LAMBDA))):
-            print("{} - Minimizing distances".format(gap))
-
-            parallelLoop = partial(self._parallelPELEMinimizerLoop,
-                                   general_path, atoms_to_minimize)
-
-            with Pool(self.settings.number_of_processors) as pool:
-                pool.map(parallelLoop, simulation.iterateOverReports)
-
-        else:
-            for report in simulation.iterateOverReports:
-                for model_id in range(0, report.trajectory.models.number):
-                    file_name = str(model_id) + '-' + report.trajectory.name
-                    original_pdb = self.path + co.MODELS_FOLDER + file_name
-                    copyFile(original_pdb, general_path)
-
-    def _dECalculation(self, simulation, lambda_, shif_lambda, general_path,
-                       num, gap=''):
+    def _dECalculation(self, simulation, general_path, gap=''):
         print("{} - Calculating energetic differences".format(gap))
 
         parallelLoop = partial(self._parallelPELERecalculatorLoop,
-                               lambda_, shif_lambda, general_path, num)
+                               general_path)
 
         with Pool(self.settings.number_of_processors) as pool:
             pool.map(parallelLoop, simulation.iterateOverReports)
@@ -195,7 +166,6 @@ class dECalculation(Command):
 
             # Write recalculation control file
             self._writeRecalculationControlFile(
-                self.settings.sp_control_file,
                 model_name,
                 self.path + co.SINGLE_POINT_CF_NAME.format(pid),
                 logfile_name=logfile_name)
@@ -205,79 +175,33 @@ class dECalculation(Command):
 
         write_energies_report(path, report_file, energies)
 
-    def _parallelPELEMinimizerLoop(self, general_path, atoms_to_minimize,
-                                   report_file):
-        create_directory(general_path)
-
-        pid = current_process().pid
-
-        for model_id, active in enumerate(report_file.models):
-            # Set initial variables
-            file_name = str(model_id) + '-' + report_file.trajectory.name
-            original_pdb = self.path + co.MODELS_FOLDER + file_name
-            logfile_name = self.path + co.LOGFILE_NAME.format(pid)
-            minimized_pdb = general_path + file_name
-
-            # Define new PELERunner
-            runner = PELERunner(self.settings.serial_pele,
-                                number_of_processors=1)
-
-            # Write recalculation control file
-            self._writeRecalculationControlFile(
-                self.settings.pp_control_file,
-                original_pdb,
-                self.path + co.POST_PROCESSING_CF_NAME.format(pid),
-                logfile_name=logfile_name,
-                trajectory_name=minimized_pdb,
-                atoms_to_minimize=atoms_to_minimize)
-
-            runner.run(self.path + co.POST_PROCESSING_CF_NAME.format(pid))
-
-            self._applyMinimizedDistancesTo(original_pdb, minimized_pdb)
-
-    def _parallelPELERecalculatorLoop(self, lambda_, shifted_lambda,
-                                      general_path, num, report_file):
+    def _parallelPELERecalculatorLoop(self, general_path, report_file):
         create_directory(general_path)
 
         pid = current_process().pid
         energies = []
-        rmsds = []
 
         for model_id, active in enumerate(report_file.models):
             # Set initial variables
-            file_name = str(model_id) + '-' + report_file.trajectory.name
-            original_pdb = self.path + co.MODELS_FOLDER + file_name
-            shifted_pdb = general_path + file_name
+            model_name = self.path + co.MODELS_FOLDER + str(model_id) + \
+                '-' + report_file.trajectory.name
             logfile_name = self.path + co.LOGFILE_NAME.format(pid)
 
             # Define new PELERunner
             runner = PELERunner(self.settings.serial_pele,
                                 number_of_processors=1)
 
-            # In case bad model was previously removed
-            """
-            if (not active):
-                print("  - Warning: skipping bad model from path: " +
-                      "\'{}\'".format(shifted_pdb))
-                continue
-            """
-
             # Write recalculation control file
             self._writeRecalculationControlFile(
-                self.settings.sp_control_file,
-                shifted_pdb,
+                model_name,
                 self.path + co.SINGLE_POINT_CF_NAME.format(pid),
                 logfile_name=logfile_name)
 
             # Run PELE and extract energy prediction
             energies.append(self._getPELEEnergyPrediction(runner, pid))
 
-            # Calculate RMSD between original pdb and shifted one
-            rmsd = self._calculateRMSD(original_pdb, shifted_pdb)
-            rmsds.append(rmsd)
-
         # Write trajectories and reports
-        write_energies_report(general_path, report_file, energies, rmsds)
+        write_energies_report(general_path, report_file, energies)
         join_splitted_models(general_path, "*-" + report_file.trajectory.name)
 
         # Clean temporal files
@@ -294,33 +218,18 @@ class dECalculation(Command):
 
         return energies
 
-    def _writeRecalculationControlFile(self, template_path, pdb_name,
+    def _writeRecalculationControlFile(self, pdb_name,
                                        output_path,
-                                       logfile_name=None,
-                                       trajectory_name=None,
-                                       atoms_to_minimize=None):
-            builder = ControlFileFromTemplateCreator(template_path)
+                                       logfile_name=None):
+            builder = ControlFileFromTemplateCreator(
+                self.settings.sp_control_file,)
 
             builder.replaceFlag("INPUT_PDB_NAME", pdb_name)
             builder.replaceFlag("SOLVENT_TYPE", self.settings.solvent_type)
             if (logfile_name is not None):
                 builder.replaceFlag("LOG_PATH", logfile_name)
-            if (trajectory_name is not None):
-                builder.replaceFlag("TRAJECTORY_PATH", trajectory_name)
-            if (atoms_to_minimize is not None):
-                builder.replaceFlag("ATOMS_TO_MINIMIZE",
-                                    "\"" + '\", \"'.join(atoms_to_minimize) +
-                                    "\"")
 
             builder.write(output_path)
-
-    def _calculateRMSD(self, pdb_name, trajectory_name):
-        linkId = self._getPerturbingLinkId()
-
-        initial = PDBParser(pdb_name).getLinkWithId(linkId)
-        final = PDBParser(trajectory_name).getLinkWithId(linkId)
-
-        return final.calculateRMSDWith(initial)
 
     def _getGeneralPath(self, lambda_, num, shifted_lambda=None):
         general_path = self.path

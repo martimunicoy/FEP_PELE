@@ -174,15 +174,12 @@ def write_recalculation_control_file(input_path, pdb_name, logfile_name,
         file.write(filedata)
 
 
-def write_energies_report(output_path, report_file, energies,
-                          rmsds=None):
+def write_energies_report(output_path, report_file, energies):
     tasks = report_file.getMetric(1)
     steps = report_file.getMetric(2)
     accepted_steps = report_file.getMetric(3)
 
     first_line = co.REPORT_FIRST_LINE
-    if (rmsds is None):
-        first_line = first_line[:-8] + '\n'
 
     with open(output_path + report_file.name, 'w') as file:
         file.write(first_line)
@@ -193,8 +190,6 @@ def write_energies_report(output_path, report_file, energies,
                        str(round(steps[i])) + "    " +
                        str(round(accepted_steps[i])) + "    " +
                        str(round(energy, 2)))
-            if (rmsds is not None):
-                file.write("    " + str(round(rmsds[i], 3)))
 
             file.write("\n")
 
